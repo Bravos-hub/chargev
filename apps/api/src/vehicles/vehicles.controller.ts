@@ -2,8 +2,8 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards }
 import { VehiclesService } from './vehicles.service'
 import { CreateVehicleDto, UpdateVehicleDto } from './dto/vehicle.dto'
 import { CreateMaintenanceRecordDto } from './dto/maintenance.dto'
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
-import { RolesGuard } from '../../common/guards/roles.guard'
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
+import { RolesGuard } from '../common/guards/roles.guard'
 
 @Controller('vehicles')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -16,7 +16,7 @@ export class VehiclesController {
     }
 
     @Get()
-    findAll(@Request() req) {
+    findAll(@Request() req: any) {
         return this.vehiclesService.findAll(req.user)
     }
 
@@ -41,13 +41,28 @@ export class VehiclesController {
         return this.vehiclesService.getDiagnostics(id)
     }
 
-    @Get(':id/battery-health')
-    getBatteryHealth(@Param('id') id: string) {
-        return this.vehiclesService.getBatteryHealth(id)
+    @Get(':id/trips')
+    getTrips(@Param('id') id: string) {
+        return this.vehiclesService.getTrips(id)
+    }
+
+    @Get(':id/sessions')
+    getSessions(@Param('id') id: string) {
+        return this.vehiclesService.getSessions(id)
+    }
+
+    @Get(':id/maintenance')
+    getMaintenance(@Param('id') id: string) {
+        return this.vehiclesService.getMaintenanceRecords(id)
     }
 
     @Post(':id/maintenance')
     addMaintenance(@Param('id') id: string, @Body() dto: CreateMaintenanceRecordDto) {
         return this.vehiclesService.addMaintenanceRecord(id, dto)
+    }
+
+    @Get(':id/faults')
+    getFaults(@Param('id') id: string) {
+        return this.vehiclesService.getFaults(id)
     }
 }

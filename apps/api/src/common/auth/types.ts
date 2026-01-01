@@ -12,7 +12,10 @@ export type Role = (typeof ROLES)[number]
 
 export type JwtUser = {
   id: string
+  email: string
   role: Role
   tenantId: string
   orgId?: string | null
 }
+
+export type TokenPayload = JwtUser

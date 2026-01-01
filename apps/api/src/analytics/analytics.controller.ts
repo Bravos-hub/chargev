@@ -55,7 +55,7 @@ export class AnalyticsController {
             res.status(HttpStatus.OK).send(csv)
         } catch (error) {
             res.status(HttpStatus.BAD_REQUEST).json({
-                error: error.message
+                error: (error as any).message
             })
         }
     }

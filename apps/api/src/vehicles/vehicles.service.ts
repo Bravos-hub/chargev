@@ -1,12 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { PrismaService } from '../../common/prisma/prisma.service'
+import { PrismaClient } from '.prisma/client'
 import { CreateVehicleDto, UpdateVehicleDto } from './dto/vehicle.dto'
 import { CreateMaintenanceRecordDto } from './dto/maintenance.dto'
-import { UserRole } from '@prisma/client'
 
 @Injectable()
 export class VehiclesService {
-    constructor(private prisma: PrismaService) { }
+    constructor(private prisma: PrismaClient) { }
 
     async create(createVehicleDto: CreateVehicleDto) {
         return this.prisma.vehicle.create({
@@ -115,6 +114,34 @@ export class VehiclesService {
                 vehicleId: id,
                 ...dto
             }
+        })
+    }
+
+    async getTrips(id: string) {
+        return this.prisma.trip.findMany({
+            where: { vehicleId: id },
+            orderBy: { startedAt: 'desc' }
+        })
+    }
+
+    async getSessions(id: string) {
+        return this.prisma.chargingSession.findMany({
+            where: { vehicleId: id },
+            orderBy: { startedAt: 'desc' }
+        })
+    }
+
+    async getFaults(id: string) {
+        return this.prisma.faultCode.findMany({
+            where: { vehicleId: id },
+            orderBy: { detectedAt: 'desc' }
+        })
+    }
+
+    async getMaintenanceRecords(id: string) {
+        return this.prisma.maintenanceRecord.findMany({
+            where: { vehicleId: id },
+            orderBy: { scheduledAt: 'desc' }
         })
     }
 }

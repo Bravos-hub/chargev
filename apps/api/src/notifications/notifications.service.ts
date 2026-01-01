@@ -1,55 +1,42 @@
-import { Injectable } from '@nestjs/common'
-import { PrismaService } from '../../common/prisma/prisma.service'
+import { Injectable, Logger } from '@nestjs/common'
+import { PrismaService } from '../common/prisma/prisma.service'
 import { CreateNotificationDto } from './dto/notification.dto'
 
 @Injectable()
 export class NotificationsService {
+    private readonly logger = new Logger(NotificationsService.name)
+
     constructor(private prisma: PrismaService) { }
 
     async create(dto: CreateNotificationDto) {
-        // 1. Save to DB (In-App)
-        const notification = await this.prisma.notification.create({
+        return this.prisma.notification.create({
             data: {
                 userId: dto.userId,
                 title: dto.title,
-                message: dto.message,
+                body: dto.message,
                 type: dto.type,
-                data: dto.data ?? {},
-            }
+                channel: dto.channel || 'IN_APP',
+                data: dto.data || {},
+                status: 'UNREAD'
+            },
         })
-
-        // 2. Dispatch to other channels (Push, Email, SMS)
-        if (dto.channel !== 'IN_APP') {
-            await this.dispatchExternal(dto)
-        }
-
-        return notification
     }
 
-    async findAll(userId: string, unreadOnly = false) {
-        const where: any = { userId }
-        if (unreadOnly) {
-            where.read = false
-        }
-
+    async findAll(userId: string, unreadOnly?: boolean) {
         return this.prisma.notification.findMany({
-            where,
-            orderBy: { createdAt: 'desc' },
-            take: 50
+            where: {
+                userId,
+                ...(unreadOnly ? { status: 'UNREAD' } : {})
+            },
+            orderBy: { createdAt: 'desc' }
         })
     }
 
     async markAsRead(id: string, userId: string) {
-        // Ensure ownership
-        const exists = await this.prisma.notification.findFirst({
-            where: { id, userId }
-        })
-
-        if (!exists) return null
-
-        return this.prisma.notification.update({
-            where: { id },
+        return this.prisma.notification.updateMany({
+            where: { id, userId },
             data: {
+                status: 'READ',
                 read: true,
                 readAt: new Date()
             }
@@ -58,17 +45,24 @@ export class NotificationsService {
 
     async markAllAsRead(userId: string) {
         return this.prisma.notification.updateMany({
-            where: { userId, read: false },
+            where: { userId, status: 'UNREAD' },
             data: {
+                status: 'READ',
                 read: true,
                 readAt: new Date()
             }
         })
     }
 
-    private async dispatchExternal(dto: CreateNotificationDto) {
-        // Placeholder for email/SMS/Push logic
-        // e.g., using Firebase (FCM), SendGrid, Twilio
-        console.log(`[Notification] Dispatching ${dto.channel} to user ${dto.userId}: ${dto.message}`)
+    async clearAll(userId: string) {
+        return this.prisma.notification.deleteMany({
+            where: { userId }
+        })
+    }
+
+    async remove(id: string, userId: string) {
+        return this.prisma.notification.delete({
+            where: { id, userId },
+        })
     }
 }

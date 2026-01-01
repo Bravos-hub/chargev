@@ -3,9 +3,10 @@ import { AuthService } from './auth.service'
 import { RegisterDto } from './dto/register.dto'
 import { LoginDto } from './dto/login.dto'
 import { SendOtpDto, VerifyOtpDto } from './dto/otp.dto'
-import { Public } from '../../common/decorators/auth.decorators'
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
-import { LocalAuthGuard } from '../../common/guards/local-auth.guard' // Need to create this if missing
+import { SocialLoginDto } from './dto/social.dto'
+import { AttendantLoginDto } from './dto/attendant.dto'
+import { Public } from '../common/decorators/auth.decorators'
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 
 @Controller('auth')
 export class AuthController {
@@ -38,20 +39,42 @@ export class AuthController {
     }
 
     @Public()
+    @Post('otp/resend')
+    async resendOtp(@Body() sendOtpDto: SendOtpDto) {
+        return this.authService.resendOtp(sendOtpDto)
+    }
+
+    @Public()
+    @Post('social/google')
+    async googleLogin(@Body() socialLoginDto: SocialLoginDto) {
+        return this.authService.socialLogin('google', socialLoginDto.token)
+    }
+
+    @Public()
+    @Post('social/apple')
+    async appleLogin(@Body() socialLoginDto: SocialLoginDto) {
+        return this.authService.socialLogin('apple', socialLoginDto.token)
+    }
+
+    @Public()
+    @Post('attendant/login')
+    @HttpCode(HttpStatus.OK)
+    async attendantLogin(@Body() attendantLoginDto: AttendantLoginDto) {
+        return this.authService.attendantLogin(
+            attendantLoginDto.stationCode,
+            attendantLoginDto.passcode
+        )
+    }
+
+    @Public()
     @Post('refresh')
     async refresh(@Body('refreshToken') refreshToken: string) {
         return this.authService.refreshTokens(refreshToken)
     }
 
     @UseGuards(JwtAuthGuard)
-    @Get('me')
-    getProfile(@Request() req) {
-        return req.user
-    }
-
-    @UseGuards(JwtAuthGuard)
     @Post('logout')
-    async logout(@Request() req) {
+    async logout(@Request() req: any) {
         // Logic to revoke refresh tokens
         return { success: true }
     }

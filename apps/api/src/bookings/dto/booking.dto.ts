@@ -4,17 +4,17 @@ import { BookingStatus } from '@prisma/client'
 export class CreateBookingDto {
     @IsString()
     @IsNotEmpty()
-    stationId: string
+    stationId!: string
 
     @IsString()
     @IsOptional()
     connectorId?: string
 
     @IsDateString()
-    startTime: string
+    startTime!: string
 
     @IsDateString()
-    endTime: string
+    endTime!: string
 
     @IsString()
     @IsOptional()
@@ -31,5 +31,26 @@ export class CreateBookingDto {
 
 export class UpdateBookingStatusDto {
     @IsEnum(BookingStatus)
-    status: BookingStatus
+    @IsOptional()
+    status?: BookingStatus
+}
+
+export class UpdateBookingDto {
+    @IsDateString()
+    @IsOptional()
+    startTime?: string
+
+    @IsDateString()
+    @IsOptional()
+    endTime?: string
+
+    @IsNumber()
+    @IsOptional()
+    energyTarget?: number
+}
+
+export class ExtendBookingDto {
+    @IsNumber()
+    @IsNotEmpty()
+    minutes!: number
 }

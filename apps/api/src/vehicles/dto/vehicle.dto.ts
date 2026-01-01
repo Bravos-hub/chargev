@@ -3,23 +3,23 @@ import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-va
 export class CreateVehicleDto {
     @IsString()
     @IsNotEmpty()
-    vin: string
+    vin!: string
 
     @IsString()
     @IsNotEmpty()
-    make: string
+    make!: string
 
     @IsString()
     @IsNotEmpty()
-    model: string
+    model!: string
 
     @IsInt()
     @Min(1900)
-    year: number
+    year!: number
 
     @IsNumber()
     @Min(0)
-    batteryCapacity: number
+    batteryCapacity!: number
 
     @IsString()
     @IsOptional()

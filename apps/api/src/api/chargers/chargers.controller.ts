@@ -35,8 +35,8 @@ export class ChargersController {
                     code: charger.code,
                     name: charger.name,
                     address: charger.address,
-                    latitude: charger.latitude,
-                    longitude: charger.longitude,
+                    lat: charger.lat,
+                    lng: charger.lng,
                     status: charger.status,
                     isOnline,
                     lastSeen: cachedStatus?.lastConnected || charger.updatedAt.toISOString(),
@@ -77,7 +77,7 @@ export class ChargersController {
 
         // Get cached status and boot info
         const cachedStatus = await this.cache.get<any>(`charger:${id}:status`)
-        const bootInfo = await this.cache.hGetAll(`charger:${id}:info`)
+        const bootInfo = await this.cache.hGetAll(`charger:${id}:info`) as any
 
         // Get connector statuses (assuming 2 connectors for now)
         const connectors = await Promise.all([1, 2].map(async (connectorId) => {
@@ -94,8 +94,8 @@ export class ChargersController {
             ...charger,
             isOnline,
             lastSeen: cachedStatus?.lastConnected || charger.updatedAt.toISOString(),
-            bootInfo: bootInfo?.bootInfo ? JSON.parse(bootInfo.bootInfo) : null,
-            lastBoot: bootInfo?.lastBoot,
+            bootInfo: bootInfo && bootInfo.bootInfo ? JSON.parse(bootInfo.bootInfo) : null,
+            lastBoot: bootInfo ? bootInfo.lastBoot : null,
             connectors
         }
     }
@@ -186,8 +186,8 @@ export class ChargersController {
 
         const totalSessions = sessions.length
         const completedSessions = sessions.filter(s => s.status === 'COMPLETED').length
-        const totalEnergy = sessions.reduce((sum, s) => sum + s.energyDelivered, 0)
-        const totalRevenue = sessions.reduce((sum, s) => sum + s.cost, 0)
+        const totalEnergy = sessions.reduce((sum, s) => sum + (s.kwh || 0), 0)
+        const totalRevenue = sessions.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
 
         return {
             chargerId: id,

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { PrismaService } from '../../common/prisma/prisma.service'
+import { PrismaService } from '../common/prisma/prisma.service'
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto'
 import * as bcrypt from 'bcrypt'
 
@@ -83,6 +83,21 @@ export class UsersService {
         return this.prisma.user.update({
             where: { id: userId },
             data: { fleetId, role: 'FLEET_DRIVER' } // Auto-assign role? Maybe checks needed.
+        })
+    }
+
+    async getVehicles(userId: string) {
+        return this.prisma.vehicle.findMany({
+            where: { userId }
+        })
+    }
+
+    async getSessions(userId: string) {
+        return this.prisma.chargingSession.findMany({
+            where: { userId },
+            include: {
+                station: { select: { name: true, address: true } }
+            }
         })
     }
 }

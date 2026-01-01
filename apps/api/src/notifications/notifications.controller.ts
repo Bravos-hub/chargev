@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Param, Patch, Post, Query, Request, UseGuards, Delete } from '@nestjs/common'
 import { NotificationsService } from './notifications.service'
 import { CreateNotificationDto } from './dto/notification.dto'
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
-import { RolesGuard } from '../../common/guards/roles.guard'
-import { Roles } from '../../common/decorators/auth.decorators'
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
+import { RolesGuard } from '../common/guards/roles.guard'
+import { Roles } from '../common/decorators/auth.decorators'
 import { UserRole } from '@prisma/client'
 
 @Controller('notifications')
@@ -19,17 +19,27 @@ export class NotificationsController {
     }
 
     @Get()
-    findAll(@Request() req, @Query('unread') unread?: string) {
+    findAll(@Request() req: any, @Query('unread') unread?: string) {
         return this.notificationsService.findAll(req.user.id, unread === 'true')
     }
 
     @Patch('read-all')
-    markAllAsRead(@Request() req) {
+    markAllAsRead(@Request() req: any) {
         return this.notificationsService.markAllAsRead(req.user.id)
     }
 
     @Patch(':id/read')
-    markAsRead(@Request() req, @Param('id') id: string) {
+    markAsRead(@Request() req: any, @Param('id') id: string) {
         return this.notificationsService.markAsRead(id, req.user.id)
+    }
+
+    @Delete()
+    clearAll(@Request() req: any) {
+        return this.notificationsService.clearAll(req.user.id)
+    }
+
+    @Delete(':id')
+    remove(@Request() req: any, @Param('id') id: string) {
+        return this.notificationsService.remove(id, req.user.id)
     }
 }

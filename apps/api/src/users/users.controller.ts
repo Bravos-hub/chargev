@@ -1,9 +1,9 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common'
 import { UsersService } from './users.service'
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto'
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
-import { RolesGuard } from '../../common/guards/roles.guard'
-import { Roles } from '../../common/decorators/auth.decorators'
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
+import { RolesGuard } from '../common/guards/roles.guard'
+import { Roles } from '../common/decorators/auth.decorators'
 import { UserRole } from '@prisma/client'
 
 @Controller('users')
@@ -19,13 +19,18 @@ export class UsersController {
 
     @Get()
     @Roles(UserRole.SUPER_ADMIN, UserRole.ORG_ADMIN, UserRole.FLEET_MANAGER)
-    findAll(@Request() req) {
+    findAll(@Request() req: any) {
         return this.usersService.findAll(req.user)
     }
 
-    @Get('profile')
-    getProfile(@Request() req) {
+    @Get('me')
+    getMe(@Request() req: any) {
         return this.usersService.findOne(req.user.id)
+    }
+
+    @Patch('me')
+    updateMe(@Request() req: any, @Body() updateUserDto: UpdateUserDto) {
+        return this.usersService.update(req.user.id, updateUserDto)
     }
 
     @Get(':id')
@@ -42,5 +47,15 @@ export class UsersController {
     @Roles(UserRole.SUPER_ADMIN)
     remove(@Param('id') id: string) {
         return this.usersService.remove(id)
+    }
+
+    @Get(':id/vehicles')
+    getVehicles(@Param('id') id: string) {
+        return this.usersService.getVehicles(id)
+    }
+
+    @Get(':id/sessions')
+    getSessions(@Param('id') id: string) {
+        return this.usersService.getSessions(id)
     }
 }

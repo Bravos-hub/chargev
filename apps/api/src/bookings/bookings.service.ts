@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
-import { PrismaService } from '../../common/prisma/prisma.service'
+import { PrismaService } from '../common/prisma/prisma.service'
 import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto'
 import { BookingStatus } from '@prisma/client'
 
@@ -89,6 +89,22 @@ export class BookingsService {
         return booking
     }
 
+    async update(id: string, dto: any, user: any) {
+        const booking = await this.findOne(id, user)
+        if (booking.status === 'CANCELLED' || booking.status === 'COMPLETED') {
+            throw new BadRequestException('Cannot update a finalized booking')
+        }
+        return this.prisma.booking.update({
+            where: { id },
+            data: dto
+        })
+    }
+
+    async remove(id: string, user: any) {
+        const booking = await this.findOne(id, user)
+        return this.prisma.booking.delete({ where: { id } })
+    }
+
     async updateStatus(id: string, status: BookingStatus, user: any) {
         const booking = await this.findOne(id, user)
 
@@ -104,6 +120,33 @@ export class BookingsService {
                 cancelledAt: status === 'CANCELLED' ? new Date() : undefined,
                 checkedInAt: status === 'CHECKED_IN' ? new Date() : undefined,
             }
+        })
+    }
+
+    async getQueue(stationId: string) {
+        return this.prisma.booking.findMany({
+            where: {
+                stationId,
+                status: 'PENDING',
+                startTime: { gt: new Date() }
+            },
+            orderBy: { queuePosition: 'asc' }
+        })
+    }
+
+    async findByUser(userId: string) {
+        return this.prisma.booking.findMany({
+            where: { userId },
+            include: { station: { select: { name: true, address: true } } },
+            orderBy: { startTime: 'desc' }
+        })
+    }
+
+    async findByStation(stationId: string) {
+        return this.prisma.booking.findMany({
+            where: { stationId },
+            include: { User: { select: { name: true, email: true } } },
+            orderBy: { startTime: 'desc' }
         })
     }
 }

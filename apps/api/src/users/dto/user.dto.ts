@@ -3,7 +3,7 @@ import { UserRole } from '@prisma/client'
 
 export class CreateUserDto {
     @IsString()
-    name: string
+    name!: string
 
     @IsEmail()
     @IsOptional()
@@ -15,7 +15,7 @@ export class CreateUserDto {
     phone?: string
 
     @IsEnum(UserRole)
-    role: UserRole
+    role!: UserRole
 
     @IsString()
     @IsOptional()

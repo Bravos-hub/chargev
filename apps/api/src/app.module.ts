@@ -13,6 +13,13 @@ import { AuthModule } from './auth/auth.module'
 import { VehiclesModule } from './vehicles/vehicles.module'
 import { BookingsModule } from './bookings/bookings.module'
 import { UsersModule } from './users/users.module'
+import { WalletModule } from './wallet/wallet.module'
+import { SwapModule } from './swap/swap.module'
+import { PrivateChargersModule } from './private-chargers/private-chargers.module'
+import { SupportModule } from './support/support.module'
+import { FleetsModule } from './fleets/fleets.module'
+import { OrganizationsModule } from './organizations/organizations.module'
+import { RoutePlanningModule } from './route-planning/route-planning.module'
 import { PaymentsModule } from './payments/payments.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { HealthModule } from './health/health.module'
@@ -38,6 +45,13 @@ import { HealthModule } from './health/health.module'
     VehiclesModule,
     BookingsModule,
     UsersModule,
+    WalletModule,
+    SwapModule,
+    PrivateChargersModule,
+    SupportModule,
+    FleetsModule,
+    OrganizationsModule,
+    RoutePlanningModule,
     PaymentsModule,
     NotificationsModule,
     HealthModule,

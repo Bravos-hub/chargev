@@ -2,11 +2,11 @@ import { BadRequestException, ConflictException, Injectable, UnauthorizedExcepti
 import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
-import { PrismaService } from '../../common/prisma/prisma.service'
+import { PrismaService } from '../common/prisma/prisma.service'
 import { RegisterDto } from './dto/register.dto'
 import { LoginDto } from './dto/login.dto'
 import { SendOtpDto, VerifyOtpDto, OtpType } from './dto/otp.dto'
-import { TokenPayload } from '../../common/auth/types'
+import { TokenPayload } from '../common/auth/types'
 import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
@@ -55,7 +55,7 @@ export class AuthService {
 
             // Generate tokens
             const tokens = await this.generateTokens(user)
-            return { user, ...tokens }
+            return tokens
         } catch (error) {
             console.error(error)
             throw new BadRequestException('Registration failed')
@@ -82,7 +82,7 @@ export class AuthService {
         }
 
         const tokens = await this.generateTokens(user)
-        return { user, ...tokens }
+        return tokens
     }
 
     async validateUser(username: string, pass: string): Promise<any> {
@@ -164,6 +164,49 @@ export class AuthService {
         return { success: true, verified: true }
     }
 
+    async resendOtp(sendOtpDto: SendOtpDto) {
+        // Reuse sendOtp logic
+        return this.sendOtp(sendOtpDto)
+    }
+
+    async socialLogin(type: 'google' | 'apple', token: string) {
+        // TODO: Verify token with provider
+        console.log(`[MOCK SOCIAL] Logging in with ${type}: ${token}`)
+
+        // Mock user for now
+        const mockUser = {
+            id: 'social-user-1',
+            email: `social_${type}@example.com`,
+            name: `Social ${type} User`,
+            role: 'RIDER_STANDARD',
+            tenantId: 'tenant-1',
+        }
+
+        return this.generateTokens(mockUser)
+    }
+
+    async attendantLogin(stationCode: string, passcode: string) {
+        // TODO: Verify attendant passcode with station
+        // For now, looking for a user with role STATION_ATTENDANT and matching org/station info
+        // This is a placeholder logic
+        if (passcode !== '1234') {
+            throw new UnauthorizedException('Invalid attendant credentials')
+        }
+
+        const user = await this.prisma.user.findFirst({
+            where: {
+                role: 'STATION_ATTENDANT',
+                // Additional scope checks would go here
+            }
+        })
+
+        if (!user) {
+            throw new UnauthorizedException('Attendant account not found')
+        }
+
+        return this.generateTokens(user)
+    }
+
     // ===========================================
     // TOKENS
     // ===========================================
@@ -199,9 +242,10 @@ export class AuthService {
 
     private async generateTokens(user: any) {
         const payload: TokenPayload = {
-            sub: user.id,
+            id: user.id,
             email: user.email,
             role: user.role,
+            tenantId: user.tenantId || 'tenant-1',
             orgId: user.orgId,
         }
 

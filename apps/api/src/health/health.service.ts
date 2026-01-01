@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { PrismaService } from '../../common/prisma/prisma.service'
+import { PrismaService } from '../common/prisma/prisma.service'
 
 @Injectable()
 export class HealthService {
@@ -20,7 +20,7 @@ export class HealthService {
                 status: 'error',
                 timestamp: new Date().toISOString(),
                 database: 'disconnected',
-                error: error.message
+                error: (error as any).message
             }
         }
     }

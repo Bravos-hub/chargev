@@ -15,7 +15,7 @@ async function bootstrap() {
   const port = parseInt(config.get<string>('PORT') || '4000', 10)
   const origin = config.get<string>('CORS_ORIGIN')
 
-  app.setGlobalPrefix('api')
+  app.setGlobalPrefix('api/v1')
   app.enableCors({
     origin: origin ? origin.split(',') : true,
     credentials: true,
@@ -27,6 +27,12 @@ async function bootstrap() {
       transform: true,
     })
   )
+
+  const { TransformInterceptor } = await import('./common/interceptors/transform.interceptor')
+  const { HttpExceptionFilter } = await import('./common/filters/http-exception.filter')
+
+  app.useGlobalInterceptors(new TransformInterceptor())
+  app.useGlobalFilters(new HttpExceptionFilter())
 
   await app.listen(port, '0.0.0.0')
 }

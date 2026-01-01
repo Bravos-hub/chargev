@@ -1,0 +1,55 @@
+
+> evzone-backend@0.1.0 build
+> nest build
+
+[1m[31mERROR[39m[22m in [1m./apps/api/src/analytics/analytics.controller.ts:95:25[39m[22m
+TS2339: Property 'date' does not exist on type 'never'.
+  [0m [90m 93 |[39m             today[33m:[39m metrics[33m.[39mtoday[33m.[39mrevenue[33m,[39m
+   [90m 94 |[39m             trends[33m:[39m usage[33m.[39mtrends[33m.[39mmap(t [33m=>[39m ({
+  [31m[1m>[22m[39m[90m 95 |[39m                 date[33m:[39m t[33m.[39mdate[33m,[39m
+   [90m    |[39m                         [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   [90m 96 |[39m                 revenue[33m:[39m t[33m.[39mrevenue
+   [90m 97 |[39m             }))
+   [90m 98 |[39m         }[0m
+
+[1m[31mERROR[39m[22m in [1m./apps/api/src/analytics/analytics.controller.ts:96:28[39m[22m
+TS2339: Property 'revenue' does not exist on type 'never'.
+  [0m [90m 94 |[39m             trends[33m:[39m usage[33m.[39mtrends[33m.[39mmap(t [33m=>[39m ({
+   [90m 95 |[39m                 date[33m:[39m t[33m.[39mdate[33m,[39m
+  [31m[1m>[22m[39m[90m 96 |[39m                 revenue[33m:[39m t[33m.[39mrevenue
+   [90m    |[39m                            [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   [90m 97 |[39m             }))
+   [90m 98 |[39m         }
+   [90m 99 |[39m     }[0m
+
+[1m[31mERROR[39m[22m in [1m./apps/api/src/analytics/analytics.controller.ts:117:25[39m[22m
+TS2339: Property 'date' does not exist on type 'never'.
+  [0m [90m 115 |[39m             today[33m:[39m metrics[33m.[39mtoday[33m.[39menergyDelivered[33m,[39m
+   [90m 116 |[39m             trends[33m:[39m usage[33m.[39mtrends[33m.[39mmap(t [33m=>[39m ({
+  [31m[1m>[22m[39m[90m 117 |[39m                 date[33m:[39m t[33m.[39mdate[33m,[39m
+   [90m     |[39m                         [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   [90m 118 |[39m                 energy[33m:[39m t[33m.[39menergy
+   [90m 119 |[39m             }))
+   [90m 120 |[39m         }[0m
+
+[1m[31mERROR[39m[22m in [1m./apps/api/src/analytics/analytics.controller.ts:118:27[39m[22m
+TS2339: Property 'energy' does not exist on type 'never'.
+  [0m [90m 116 |[39m             trends[33m:[39m usage[33m.[39mtrends[33m.[39mmap(t [33m=>[39m ({
+   [90m 117 |[39m                 date[33m:[39m t[33m.[39mdate[33m,[39m
+  [31m[1m>[22m[39m[90m 118 |[39m                 energy[33m:[39m t[33m.[39menergy
+   [90m     |[39m                           [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   [90m 119 |[39m             }))
+   [90m 120 |[39m         }
+   [90m 121 |[39m     }[0m
+
+[1m[31mERROR[39m[22m in [1m./apps/api/src/payments/payments.service.ts:46:35[39m[22m
+TS2339: Property 'metadata' does not exist on type 'ConfirmPaymentDto'.
+  [0m [90m 44 |[39m             data[33m:[39m {
+   [90m 45 |[39m                 status[33m:[39m [32m'SUCCEEDED'[39m[33m,[39m
+  [31m[1m>[22m[39m[90m 46 |[39m                 providerData[33m:[39m dto[33m.[39mmetadata [36mas[39m any[33m,[39m
+   [90m    |[39m                                   [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   [90m 47 |[39m             }[33m,[39m
+   [90m 48 |[39m         })
+   [90m 49 |[39m[0m
+
+webpack 5.97.1 compiled with [1m[31m5 errors[39m[22m in 11563 ms

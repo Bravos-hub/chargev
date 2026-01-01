@@ -1,7 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common'
-import { PrismaService } from '../../common/prisma/prisma.service'
-import { WalletService } from './wallet.service'
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common'
+import { PrismaService } from '../common/prisma/prisma.service'
+import { WalletService } from '../wallet/wallet.service'
 import { CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/payment.dto'
+import { PaymentMethod } from '@prisma/client'
 
 @Injectable()
 export class PaymentsService {
@@ -11,73 +12,104 @@ export class PaymentsService {
     ) { }
 
     async createIntent(userId: string, dto: CreatePaymentIntentDto) {
-        // 1. If method is WALLET, verify balance immediately
-        if (dto.method === 'WALLET') {
-            const wallet = await this.walletService.getWallet(userId)
-            if (Number(wallet.balance) < dto.amount) {
-                throw new BadRequestException('Insufficient wallet balance')
-            }
-        }
-
-        // 2. Create Payment Record (Pending)
-        const payment = await this.prisma.payment.create({
+        return this.prisma.payment.create({
             data: {
                 userId,
                 amount: dto.amount,
-                currency: dto.currency,
+                currency: dto.currency || 'USD',
                 method: dto.method,
-                status: 'PENDING',
-                provider: dto.method === 'WALLET' ? 'INTERNAL' : 'STRIPE_MOCK', // Dynamic based on method/config
                 bookingId: dto.bookingId,
                 sessionId: dto.sessionId,
-            }
+                status: 'PENDING',
+                provider: 'stripe'
+            },
         })
-
-        // 3. If external provider, call their API here to get clientSecret/link
-        // const providerResponse = await stripe.paymentIntents.create(...)
-
-        return {
-            paymentId: payment.id,
-            clientSecret: 'mock_client_secret_' + payment.id, // Replace with real integration
-            status: 'REQUIRES_CONFIRMATION'
-        }
     }
 
     async confirmPayment(userId: string, dto: ConfirmPaymentDto) {
         const payment = await this.prisma.payment.findUnique({
-            where: { id: dto.paymentId }
+            where: { id: dto.paymentId },
         })
 
-        if (!payment || payment.userId !== userId) {
-            throw new BadRequestException('Invalid payment')
+        if (!payment) {
+            throw new BadRequestException('Payment not found')
         }
 
-        if (payment.status === 'SUCCEEDED') {
-            return payment
+        if (payment.userId !== userId) {
+            throw new BadRequestException('Unauthorized payment confirmation')
         }
 
-        // If Wallet, process immediately
-        if (payment.method === 'WALLET') {
-            await this.walletService.chargeWallet(
-                userId,
-                Number(payment.amount),
-                `Payment for ${payment.bookingId ? 'Booking' : 'Session'}`,
-                payment.id
-            )
-        }
-
-        // Update status
-        return this.prisma.payment.update({
-            where: { id: payment.id },
+        const updatedPayment = await this.prisma.payment.update({
+            where: { id: dto.paymentId },
             data: {
                 status: 'SUCCEEDED',
-                providerTxId: dto.providerTxId
+                providerTxId: dto.providerTxId,
+            },
+        })
+
+        if (updatedPayment.status === 'SUCCEEDED') {
+            await this.walletService.creditWallet(payment.userId, Number(payment.amount), 'Payment Top-up', payment.id)
+        }
+
+        return updatedPayment
+    }
+
+    async refund(id: string) {
+        const payment = await this.prisma.payment.findUnique({ where: { id } })
+        if (!payment) throw new NotFoundException('Payment not found')
+
+        // Mock refund logic
+        return this.prisma.payment.update({
+            where: { id },
+            data: { status: 'REFUNDED' }
+        })
+    }
+
+    async processCashPayment(userId: string, amount: number, reference: string) {
+        return this.prisma.payment.create({
+            data: {
+                userId,
+                amount,
+                currency: 'USD',
+                method: 'CASH',
+                status: 'SUCCEEDED',
+                provider: 'manual',
+                providerTxId: reference
             }
         })
     }
 
-    async processWebhook(event: any) {
-        // Handle Stripe/PayPal webhooks to update payment status
-        return { received: true }
+    async processMobilePayment(userId: string, amount: number, phone: string) {
+        // Mock M-Pesa / Mobile Money logic
+        return this.prisma.payment.create({
+            data: {
+                userId,
+                amount,
+                currency: 'KES',
+                method: 'MOBILE_MONEY',
+                status: 'PENDING',
+                provider: 'mpesa',
+                metadata: { phone }
+            }
+        })
+    }
+
+    async findOne(id: string) {
+        const payment = await this.prisma.payment.findUnique({ where: { id } })
+        if (!payment) throw new NotFoundException('Payment not found')
+        return payment
+    }
+
+    async findBySession(sessionId: string) {
+        return this.prisma.payment.findMany({
+            where: { sessionId }
+        })
+    }
+
+    async getHistory(userId: string) {
+        return this.prisma.payment.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+        })
     }
 }

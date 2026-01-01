@@ -149,8 +149,8 @@ export class SessionManagerService {
                     status: ended.status,
                     startedAt: ended.startedAt,
                     endedAt: ended.endedAt,
-                    energyDelivered: ended.energyDelivered,
-                    cost: ended.cost,
+                    kwh: ended.energyDelivered, // Map from internal event to DB field
+                    amount: ended.cost, // Map from internal event to DB field
                 },
             })
             this.logger.log(`Session persisted to database: ${sessionId}`)

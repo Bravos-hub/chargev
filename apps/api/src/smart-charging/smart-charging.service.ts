@@ -1,34 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { PrismaService } from '../../common/prisma/prisma.service'
-import { CacheService } from '../../integrations/redis/cache.service'
-import { SessionManagerService } from '../../sessions/session-manager.service'
-import { KafkaService } from '../../integrations/kafka/kafka.service'
-
-export interface SitePowerLimit {
-    siteId: string
-    maxPower: number // kW
-    currentLoad: number // kW
-    availablePower: number // kW
-    chargers: ChargerAllocation[]
-}
-
-export interface ChargerAllocation {
-    chargerId: string
-    allocatedPower: number // kW
-    maxPower: number // kW
-    priority: number
-    isCharging: boolean
-}
-
-export interface ChargingPriority {
-    sessionId: string
-    userId: string
-    userType: 'FLEET' | 'PUBLIC'
-    priority: number
-    requestedPower: number
-    chargerId: string
-    timestamp: Date
-}
+import { PrismaClient } from '.prisma/client'
+import { CacheService } from '../integrations/redis/cache.service'
+import { SessionManagerService } from '../sessions/session-manager.service'
+import { KafkaService } from '../integrations/kafka/kafka.service'
+import { SitePowerLimit, ChargerAllocation, ChargingPriority } from './interfaces/smart-charging.interface'
 
 @Injectable()
 export class SmartChargingService {
@@ -38,7 +13,7 @@ export class SmartChargingService {
     private readonly DEFAULT_MAX_POWER = 22 // kW (Type 2 AC charger)
 
     constructor(
-        private prisma: PrismaService,
+        private prisma: PrismaClient,
         private cache: CacheService,
         private sessionManager: SessionManagerService,
         private kafka: KafkaService
@@ -55,10 +30,10 @@ export class SmartChargingService {
         }
 
         // Get from database or use default
-        const site = await this.prisma.site.findUnique({
+        const site = await this.prisma.station.findUnique({
             where: { id: siteId },
             include: {
-                stations: true
+                chargePoints: true
             }
         })
 
@@ -68,23 +43,23 @@ export class SmartChargingService {
 
         // Calculate total available power  
         // Default: 50kW per charger or use site's totalPowerCapacity if available
-        const totalChargers = site.stations.length
+        const totalChargers = site.chargePoints.length
         const maxPower = (site as any).totalPowerCapacity || (totalChargers * 50)
 
         const activeSessions = await this.sessionManager.getActiveSessions()
-        const siteActiveSessions = activeSessions.filter(s =>
-            site.stations.some(st => st.id === s.stationId)
+        const siteActiveSessions = activeSessions.filter((s: any) =>
+            s.stationId === siteId && site.chargePoints.some((cp: any) => cp.id === s.chargePointId)
         )
 
         // Calculate current load (assuming 7kW average per active session)
         const currentLoad = siteActiveSessions.length * 7
 
-        const chargers: ChargerAllocation[] = site.stations.map(station => ({
-            chargerId: station.id,
-            allocatedPower: siteActiveSessions.some(s => s.stationId === station.id) ? 7 : 0,
+        const chargers: ChargerAllocation[] = site.chargePoints.map((cp: any) => ({
+            chargerId: cp.id,
+            allocatedPower: siteActiveSessions.some((s: any) => s.chargePointId === cp.id) ? 7 : 0,
             maxPower: this.DEFAULT_MAX_POWER,
             priority: 1,
-            isCharging: siteActiveSessions.some(s => s.stationId === station.id)
+            isCharging: siteActiveSessions.some((s: any) => s.chargePointId === cp.id)
         }))
 
         const powerLimit: SitePowerLimit = {
@@ -134,8 +109,8 @@ export class SmartChargingService {
 
         // Get all active sessions at this site
         const activeSessions = await this.sessionManager.getActiveSessions()
-        const siteSessions = activeSessions.filter(s =>
-            siteLimit.chargers.some(c => c.chargerId === s.stationId)
+        const siteSessions = activeSessions.filter((s: any) =>
+            s.stationId === siteId && siteLimit.chargers.some((c: any) => c.chargerId === s.chargePointId)
         )
 
         // Priority-based allocation
@@ -152,8 +127,8 @@ export class SmartChargingService {
         const allocations: Map<string, number> = new Map()
 
         // High priority first (Fleet)
-        const fleetSessions = prioritizedSessions.filter(p => p.userType === 'FLEET')
-        const publicSessions = prioritizedSessions.filter(p => p.userType === 'PUBLIC')
+        const fleetSessions = prioritizedSessions.filter((p: ChargingPriority) => p.userType === 'FLEET')
+        const publicSessions = prioritizedSessions.filter((p: ChargingPriority) => p.userType === 'PUBLIC')
 
         // Allocate 70% to fleet, 30% to public if both present
         if (fleetSessions.length > 0 && publicSessions.length > 0) {
@@ -162,20 +137,20 @@ export class SmartChargingService {
 
             // Distribute fleet power
             const fleetShare = fleetPower / fleetSessions.length
-            fleetSessions.forEach(s => allocations.set(s.sessionId, fleetShare))
+            fleetSessions.forEach((s: ChargingPriority) => allocations.set(s.sessionId, fleetShare))
 
             // Distribute public power
             const publicShare = publicPower / publicSessions.length
-            publicSessions.forEach(s => allocations.set(s.sessionId, publicShare))
+            publicSessions.forEach((s: ChargingPriority) => allocations.set(s.sessionId, publicShare))
         } else {
             // All same type, distribute equally
             const equalShare = availablePower / totalSessions
-            prioritizedSessions.forEach(s => allocations.set(s.sessionId, equalShare))
+            prioritizedSessions.forEach((s: ChargingPriority) => allocations.set(s.sessionId, equalShare))
         }
 
         // Send charging profiles to chargers via OCPP
         for (const [sessionId, allocatedPower] of allocations.entries()) {
-            const session = siteSessions.find(s => s.id === sessionId)
+            const session = siteSessions.find((s: any) => s.id === sessionId)
             if (!session) continue
 
             await this.setChargingProfile(session.stationId, sessionId, allocatedPower)
@@ -288,8 +263,8 @@ export class SmartChargingService {
         if (queueItems.length === 0) return
 
         const queue: ChargingPriority[] = queueItems
-            .map(item => JSON.parse(item))
-            .sort((a, b) => b.priority - a.priority)
+            .map((item: string) => JSON.parse(item))
+            .sort((a: any, b: any) => b.priority - a.priority)
 
         // Check if charger is available
         const onlineChargers = await this.cache.sMembers('chargers:online')
@@ -332,7 +307,7 @@ export class SmartChargingService {
         const queueItems = await this.cache.sMembers(`charger:${chargerId}:queue`)
 
         return queueItems
-            .map(item => JSON.parse(item))
-            .sort((a, b) => b.priority - a.priority)
+            .map((item: string) => JSON.parse(item))
+            .sort((a: any, b: any) => b.priority - a.priority)
     }
 }
