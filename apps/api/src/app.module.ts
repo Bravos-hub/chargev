@@ -11,7 +11,8 @@ import { SmartChargingModule } from './smart-charging/smart-charging.module'
 import { SecurityModule } from './common/security.module'
 import { AuthModule } from './auth/auth.module'
 import { VehiclesModule } from './vehicles/vehicles.module'
-// import { UsersModule } from './modules/users/users.module'
+import { BookingsModule } from './bookings/bookings.module'
+import { UsersModule } from './users/users.module'
 // import { StationsModule } from './modules/stations/stations.module'
 // import { SessionsModule } from './modules/sessions/sessions.module'
 // import { PaymentsModule } from './modules/payments/payments.module'
@@ -26,7 +27,7 @@ import { VehiclesModule } from './vehicles/vehicles.module'
     }),
     PrismaModule,
     KafkaModule,
-    RedisModule,
+    RedisModule, // Global Redis module
     SecurityModule, // Must be before feature modules for global guards
     RealtimeModule,
     SessionsManagerModule,
@@ -35,7 +36,8 @@ import { VehiclesModule } from './vehicles/vehicles.module'
     SmartChargingModule,
     AuthModule,
     VehiclesModule,
-    // UsersModule,
+    BookingsModule,
+    UsersModule,
     // StationsModule,
     // SessionsModule,
     // PaymentsModule,
