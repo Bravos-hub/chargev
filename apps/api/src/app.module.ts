@@ -10,6 +10,7 @@ import { ApiModule } from './api/api.module'
 import { SmartChargingModule } from './smart-charging/smart-charging.module'
 import { SecurityModule } from './common/security.module'
 import { AuthModule } from './auth/auth.module'
+import { VehiclesModule } from './vehicles/vehicles.module'
 // import { UsersModule } from './modules/users/users.module'
 // import { StationsModule } from './modules/stations/stations.module'
 // import { SessionsModule } from './modules/sessions/sessions.module'
@@ -33,6 +34,7 @@ import { AuthModule } from './auth/auth.module'
     ApiModule,
     SmartChargingModule,
     AuthModule,
+    VehiclesModule,
     // UsersModule,
     // StationsModule,
     // SessionsModule,
