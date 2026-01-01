@@ -13,10 +13,10 @@ import { AuthModule } from './auth/auth.module'
 import { VehiclesModule } from './vehicles/vehicles.module'
 import { BookingsModule } from './bookings/bookings.module'
 import { UsersModule } from './users/users.module'
+import { PaymentsModule } from './payments/payments.module'
+import { NotificationsModule } from './notifications/notifications.module'
 // import { StationsModule } from './modules/stations/stations.module'
 // import { SessionsModule } from './modules/sessions/sessions.module'
-// import { PaymentsModule } from './modules/payments/payments.module'
-// import { NotificationsModule } from './modules/notifications/notifications.module'
 // import { HealthModule } from './modules/health/health.module'
 
 @Module({
@@ -38,10 +38,10 @@ import { UsersModule } from './users/users.module'
     VehiclesModule,
     BookingsModule,
     UsersModule,
+    PaymentsModule,
+    NotificationsModule,
     // StationsModule,
     // SessionsModule,
-    // PaymentsModule,
-    // NotificationsModule,
     // HealthModule,
   ],
 })
