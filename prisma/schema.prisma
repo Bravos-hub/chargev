@@ -1,0 +1,941 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  // System Administration
+  SUPER_ADMIN
+  PLATFORM_ADMIN
+
+  // Organization Management
+  ORG_OWNER
+  ORG_ADMIN
+
+  // Station Ownership & Management
+  STATION_OWNER_INDIVIDUAL
+  STATION_OWNER_ORG
+  STATION_ADMIN
+  STATION_ATTENDANT
+
+  // Technical Support
+  TECHNICIAN_PUBLIC
+  TECHNICIAN_ORG
+
+  // Fleet Management
+  FLEET_MANAGER
+  FLEET_DRIVER
+
+  // End Users
+  RIDER_PREMIUM
+  RIDER_STANDARD
+  GUEST
+
+  // Legacy (for backwards compatibility)
+  EVZONE_ADMIN
+  EVZONE_OPERATOR
+  EVZONE_OWNER
+  EVZONE_SITE_OWNER
+  EVZONE_TECH
+  EVZONE_DRIVER
+  EVZONE_FLEET_MANAGER
+}
+
+enum OrgType {
+  CHARGING_NETWORK
+  FLEET_OPERATOR
+  PROPERTY_MANAGEMENT
+  MUNICIPALITY
+}
+
+enum StationStatus {
+  ONLINE
+  DEGRADED
+  OFFLINE
+  MAINTENANCE
+}
+
+enum StationType {
+  CHARGE
+  SWAP
+  BOTH
+}
+
+enum SessionStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  EXPIRED
+  // Legacy
+  RESERVED
+}
+
+enum PaymentMethod {
+  CARD
+  MOBILE_MONEY
+  WALLET
+  CASH
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum CommandStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum InvoiceStatus {
+  PAID
+  PENDING
+  OVERDUE
+  REFUNDED
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationType {
+  SESSION_STARTED
+  SESSION_COMPLETED
+  BOOKING_CONFIRMED
+  BOOKING_REMINDER
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  MAINTENANCE_DUE
+  FAULT_DETECTED
+  WALLET_LOW_BALANCE
+  SYSTEM_ALERT
+}
+
+enum PackStatus {
+  AVAILABLE
+  CHARGING
+  ASSIGNED
+  IN_USE
+  MAINTENANCE
+  RESERVED
+  FAULTY
+}
+
+enum SwapStatus {
+  INITIATED
+  PACK_REMOVED
+  PACK_INSTALLED
+  COMPLETED
+  CANCELLED
+}
+
+enum AccessType {
+  OWNER
+  PERMANENT
+  TEMPORARY
+  GUEST_PASS
+  ONE_TIME
+}
+
+enum ScheduleType {
+  AVAILABILITY
+  PRICING
+  RESTRICTED
+  MAINTENANCE
+}
+
+enum PricingType {
+  FLAT_RATE
+  TIME_BASED
+  ENERGY_BASED
+  TIME_OF_USE
+  DYNAMIC
+}
+
+// ============================================================================
+// MULTI-TENANCY & ORGANIZATIONS
+// ============================================================================
+
+model Tenant {
+  id        String         @id @default(cuid())
+  name      String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  orgs      Organization[]
+  users     User[]
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  type      OrgType  @default(CHARGING_NETWORK)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  users    User[]
+  vehicles Vehicle[]
+  stations Station[]
+  fleets   Fleet[]
+  invoices Invoice[]
+
+  @@index([tenantId])
+}
+
+model Fleet {
+  id        String   @id @default(cuid())
+  name      String
+  orgId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org      Organization @relation(fields: [orgId], references: [id])
+  vehicles Vehicle[]
+  drivers  User[]
+
+  @@index([orgId])
+}
+
+//============================================================================
+// USERS & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id               String   @id @default(cuid())
+  email            String?  @unique
+  phone            String?  @unique
+  passwordHash     String?
+  name             String
+  role             UserRole
+  tenantId         String
+  orgId            String?
+  fleetId          String?
+  verified         Boolean  @default(false)
+  twoFactorEnabled Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  organization Organization? @relation(fields: [orgId], references: [id])
+  fleet        Fleet?        @relation(fields: [fleetId], references: [id])
+
+  refreshTokens   RefreshToken[]
+  vehicles        Vehicle[]
+  sessions        ChargingSession[]
+  swapSessions    SwapSession[]
+  bookings        Booking[]
+  payments        Payment[]
+  notifications   Notification[]
+  chargerAccess   ChargerAccess[]
+  packInspections PackInspection[]
+
+  walletId String? @unique
+  wallet   Wallet?
+
+  @@index([tenantId])
+  @@index([orgId])
+  @@index([fleetId])
+  @@index([email])
+  @@index([phone])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model OtpCode {
+  id         String   @id @default(cuid())
+  identifier String // phone or email
+  code       String
+  type       String // 'phone' | 'email'
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, type])
+}
+
+// ============================================================================
+// VEHICLES & DIAGNOSTICS
+// ============================================================================
+
+model Vehicle {
+  id              String @id @default(cuid())
+  vin             String @unique
+  make            String
+  model           String
+  year            Int
+  batteryCapacity Float // kWh
+
+  userId  String? // Individual ownership
+  orgId   String? // Org ownership
+  fleetId String? // Fleet vehicles
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user  User?         @relation(fields: [userId], references: [id])
+  org   Organization? @relation(fields: [orgId], references: [id])
+  fleet Fleet?        @relation(fields: [fleetId], references: [id])
+
+  diagnostics  VehicleDiagnostic[]
+  trips        Trip[]
+  sessions     ChargingSession[]
+  swapSessions SwapSession[]
+  maintenance  MaintenanceRecord[]
+  faults       FaultCode[]
+
+  @@index([userId])
+  @@index([orgId])
+  @@index([fleetId])
+  @@index([vin])
+}
+
+model VehicleDiagnostic {
+  id        String @id @default(cuid())
+  vehicleId String
+
+  soc         Float // State of charge %
+  range       Float // Estimated range km
+  batteryTemp Float // Battery temperature °C
+  odometer    Float // Odometer km
+  efficiency  Float // Wh/km
+
+  timestamp DateTime @default(now())
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([timestamp])
+}
+
+model Trip {
+  id        String @id @default(cuid())
+  vehicleId String
+
+  startLocation String
+  endLocation   String
+  distance      Float // km
+  duration      Int // minutes
+  energyUsed    Float // kWh
+  efficiency    Float // Wh/km
+
+  startedAt DateTime
+  endedAt   DateTime
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([startedAt])
+}
+
+model MaintenanceRecord {
+  id        String @id @default(cuid())
+  vehicleId String
+
+  type        String // 'scheduled' | 'repair' | 'inspection'
+  description String
+  cost        Decimal @db.Decimal(10, 2)
+  status      String // 'pending' | 'completed' | 'cancelled'
+
+  scheduledAt DateTime
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([status])
+}
+
+model FaultCode {
+  id        String @id @default(cuid())
+  vehicleId String
+
+  code        String
+  description String
+  severity    String // 'low' | 'medium' | 'high' | 'critical'
+  resolved    Boolean @default(false)
+
+  detectedAt DateTime  @default(now())
+  resolvedAt DateTime?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([resolved])
+}
+
+// ============================================================================
+// STATIONS & CHARGING
+// ============================================================================
+
+model Station {
+  id      String @id @default(cuid())
+  code    String @unique
+  name    String
+  region  String
+  country String
+  address String
+  lat     Float?
+  lng     Float?
+
+  orgId  String
+  type   StationType
+  status StationStatus
+
+  healthScore   Int       @default(100)
+  utilization   Int       @default(0)
+  connectors    Int       @default(0)
+  swapBays      Int       @default(0)
+  openIncidents Int       @default(0)
+  lastHeartbeat DateTime?
+
+  make  String?
+  model String?
+  maxKw Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization          @relation(fields: [orgId], references: [id])
+  chargePoints ChargePoint[]
+  swapStations SwapStation[]
+  bookings     Booking[]
+  sessions     ChargingSession[]
+  commands     CommandJob[]
+  policies     SmartChargingPolicy[]
+  access       ChargerAccess[]
+  schedules    Schedule[]
+  pricing      Pricing?
+
+  @@index([orgId])
+  @@index([status])
+  @@index([type])
+}
+
+model ChargePoint {
+  id         String        @id @default(cuid())
+  stationId  String
+  vendor     String?
+  model      String?
+  status     StationStatus @default(ONLINE)
+  maxKw      Int?
+  connectors Int           @default(1)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  station  Station           @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  sessions ChargingSession[]
+
+  @@index([stationId])
+}
+
+model SwapStation {
+  id         String        @id @default(cuid())
+  stationId  String
+  providerId String?
+  status     StationStatus @default(ONLINE)
+  bays       Int           @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  station  Station       @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  provider SwapProvider? @relation(fields: [providerId], references: [id])
+  packs    BatteryPack[]
+  shelves  Shelf[]
+  sessions SwapSession[]
+
+  @@index([stationId])
+  @@index([providerId])
+}
+
+model SmartChargingPolicy {
+  id        String   @id @default(cuid())
+  stationId String
+  name      String
+  active    Boolean  @default(true)
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@index([stationId])
+}
+
+// ============================================================================
+// BOOKINGS & RESERVATIONS
+// ============================================================================
+
+model Booking {
+  id          String  @id @default(cuid())
+  userId      String
+  stationId   String
+  connectorId String?
+
+  startTime     DateTime
+  endTime       DateTime
+  status        BookingStatus
+  queuePosition Int?
+
+  paymentStatus String  @default("pending") // 'pending' | 'paid' | 'refunded'
+  amount        Decimal @db.Decimal(10, 2)
+
+  checkedInAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations (Note: User relation removed to avoid conflict, use userId directly)
+  station Station          @relation(fields: [stationId], references: [id])
+  session ChargingSession?
+  payment Payment?
+
+  // Legacy compatibility
+  startAt DateTime?
+  endAt   DateTime?
+  User    User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([stationId])
+  @@index([status])
+}
+
+// ============================================================================
+// CHARGING SESSIONS
+// ============================================================================
+
+model ChargingSession {
+  id            String  @id @default(cuid())
+  stationId     String
+  chargePointId String?
+  userId        String?
+  vehicleId     String?
+  bookingId     String? @unique
+
+  status    SessionStatus @default(PENDING)
+  startedAt DateTime
+  endedAt   DateTime?
+  kwh       Float?        @default(0)
+  amount    Decimal?      @default(0)
+  currency  String        @default("USD")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  station     Station      @relation(fields: [stationId], references: [id])
+  chargePoint ChargePoint? @relation(fields: [chargePointId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id])
+  vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id])
+  booking     Booking?     @relation(fields: [bookingId], references: [id])
+
+  meterValues MeterValue[]
+  payments    Payment[]
+
+  @@index([stationId])
+  @@index([userId])
+  @@index([vehicleId])
+  @@index([status])
+}
+
+model MeterValue {
+  id         String   @id @default(cuid())
+  sessionId  String
+  recordedAt DateTime @default(now())
+  kwh        Float
+  powerKw    Float?
+  voltage    Float?
+  current    Float?
+
+  session ChargingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([recordedAt])
+}
+
+// ============================================================================
+// PAYMENTS & WALLET
+// ============================================================================
+
+model Payment {
+  id        String  @id @default(cuid())
+  userId    String
+  sessionId String?
+  bookingId String? @unique
+
+  amount   Decimal       @db.Decimal(10, 2)
+  currency String        @default("USD")
+  method   PaymentMethod
+  status   PaymentStatus
+
+  // Provider details
+  provider     String // 'stripe' | 'mpesa' | 'wallet' | 'cash'
+  providerTxId String?
+  providerData Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User             @relation(fields: [userId], references: [id])
+  session ChargingSession? @relation(fields: [sessionId], references: [id])
+  booking Booking?         @relation(fields: [bookingId], references: [id])
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([status])
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
+  currency  String   @default("USD")
+  locked    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id            String   @id @default(cuid())
+  walletId      String
+  type          String // 'credit' | 'debit'
+  amount        Decimal  @db.Decimal(10, 2)
+  description   String
+  reference     String?
+  balanceBefore Decimal  @db.Decimal(10, 2)
+  balanceAfter  Decimal  @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// BATTERY SWAP INFRASTRUCTURE
+// ============================================================================
+
+model SwapProvider {
+  id        String   @id @default(cuid())
+  name      String
+  logo      String?
+  rating    Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stations SwapStation[]
+  plans    SwapPlan[]
+}
+
+model SwapPlan {
+  id            String   @id @default(cuid())
+  providerId    String
+  name          String
+  price         Decimal  @db.Decimal(10, 2)
+  swapsPerMonth Int
+  description   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider SwapProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+}
+
+model BatteryPack {
+  id           String     @id @default(cuid())
+  serialNumber String     @unique
+  model        String
+  capacity     Float // kWh
+  soc          Float // State of charge %
+  soh          Float // State of health %
+  stationId    String
+  shelfId      String?
+  status       PackStatus
+  temperature  Float?
+  voltage      Float?
+  cycles       Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  station           SwapStation      @relation(fields: [stationId], references: [id])
+  shelf             Shelf?           @relation(fields: [shelfId], references: [id])
+  sessionsRemoved   SwapSession[]    @relation("PackRemoved")
+  sessionsInstalled SwapSession[]    @relation("PackInstalled")
+  inspections       PackInspection[]
+
+  @@index([stationId])
+  @@index([shelfId])
+  @@index([status])
+}
+
+model Shelf {
+  id        String   @id @default(cuid())
+  stationId String
+  position  String // 'A1', 'B2', etc.
+  capacity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  station SwapStation   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  packs   BatteryPack[]
+
+  @@index([stationId])
+}
+
+model SwapSession {
+  id              String     @id @default(cuid())
+  userId          String
+  stationId       String
+  vehicleId       String?
+  packRemovedId   String?
+  packInstalledId String
+  status          SwapStatus
+  paymentId       String?
+  signature       String? // Base64 signature
+  startedAt       DateTime
+  completedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  user          User         @relation(fields: [userId], references: [id])
+  station       SwapStation  @relation(fields: [stationId], references: [id])
+  vehicle       Vehicle?     @relation(fields: [vehicleId], references: [id])
+  packRemoved   BatteryPack? @relation("PackRemoved", fields: [packRemovedId], references: [id])
+  packInstalled BatteryPack  @relation("PackInstalled", fields: [packInstalledId], references: [id])
+
+  @@index([userId])
+  @@index([stationId])
+  @@index([vehicleId])
+  @@index([status])
+}
+
+model PackInspection {
+  id          String   @id @default(cuid())
+  packId      String
+  inspectorId String
+  condition   String // 'good' | 'fair' | 'poor'
+  notes       String?
+  photos      String[] // URLs to photos
+  issues      Json? // Structured issue data
+  createdAt   DateTime @default(now())
+
+  pack      BatteryPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  inspector User        @relation(fields: [inspectorId], references: [id])
+
+  @@index([packId])
+  @@index([inspectorId])
+}
+
+// ============================================================================
+// PRIVATE CHARGER FEATURES
+// ============================================================================
+
+model ChargerAccess {
+  id         String     @id @default(cuid())
+  stationId  String
+  userId     String?
+  type       AccessType
+  code       String? // For guest passes
+  validFrom  DateTime
+  validUntil DateTime?
+  usageCount Int        @default(0)
+  maxUsage   Int?
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([stationId])
+  @@index([userId])
+  @@index([code])
+}
+
+model Schedule {
+  id            String       @id @default(cuid())
+  stationId     String
+  name          String
+  type          ScheduleType
+  daysOfWeek    Int[] // 0-6 (Sunday-Saturday)
+  startTime     String // HH:mm
+  endTime       String // HH:mm
+  validFrom     DateTime
+  validUntil    DateTime?
+  priceOverride Decimal?     @db.Decimal(10, 2)
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@index([stationId])
+  @@index([type])
+}
+
+model Pricing {
+  id         String      @id @default(cuid())
+  stationId  String      @unique
+  type       PricingType
+  flatRate   Decimal?    @db.Decimal(10, 2)
+  perMinute  Decimal?    @db.Decimal(10, 2)
+  perHour    Decimal?    @db.Decimal(10, 2)
+  perKwh     Decimal?    @db.Decimal(10, 2)
+  touEnabled Boolean     @default(false)
+  touRates   Json?
+  currency   String      @default("USD")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@index([stationId])
+}
+
+// ============================================================================
+// NOTIFICATIONS & SUPPORT
+// ============================================================================
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  channel   NotificationChannel @default(IN_APP)
+  status    NotificationStatus  @default(UNREAD)
+  read      Boolean             @default(false)
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+}
+
+// ============================================================================
+// LEGACY/UTILITY MODELS
+// ============================================================================
+
+model CommandJob {
+  id        String        @id @default(cuid())
+  stationId String
+  command   String
+  status    CommandStatus @default(QUEUED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@index([stationId])
+  @@index([status])
+}
+
+model Invoice {
+  id        String        @id @default(cuid())
+  orgId     String
+  amount    Decimal       @db.Decimal(10, 2)
+  currency  String        @default("USD")
+  status    InvoiceStatus
+  issuedAt  DateTime
+  dueAt     DateTime
+  paidAt    DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@index([status])
+}
+
+model PaymentIntent {
+  id        String   @id @default(cuid())
+  userId    String?
+  amount    Decimal  @db.Decimal(10, 2)
+  currency  String   @default("USD")
+  status    String
+  provider  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String?
+  amount    Decimal  @db.Decimal(10, 2)
+  currency  String   @default("USD")
+  type      String
+  status    String
+  reference String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
