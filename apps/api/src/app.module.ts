@@ -9,13 +9,13 @@ import { AnalyticsModule } from './analytics/analytics.module'
 import { ApiModule } from './api/api.module'
 import { SmartChargingModule } from './smart-charging/smart-charging.module'
 import { SecurityModule } from './common/security.module'
-import { AuthModule } from './modules/auth/auth.module'
-import { UsersModule } from './modules/users/users.module'
-import { StationsModule } from './modules/stations/stations.module'
-import { SessionsModule } from './modules/sessions/sessions.module'
-import { PaymentsModule } from './modules/payments/payments.module'
-import { NotificationsModule } from './modules/notifications/notifications.module'
-import { HealthModule } from './modules/health/health.module'
+import { AuthModule } from './auth/auth.module'
+// import { UsersModule } from './modules/users/users.module'
+// import { StationsModule } from './modules/stations/stations.module'
+// import { SessionsModule } from './modules/sessions/sessions.module'
+// import { PaymentsModule } from './modules/payments/payments.module'
+// import { NotificationsModule } from './modules/notifications/notifications.module'
+// import { HealthModule } from './modules/health/health.module'
 
 @Module({
   imports: [
@@ -33,12 +33,12 @@ import { HealthModule } from './modules/health/health.module'
     ApiModule,
     SmartChargingModule,
     AuthModule,
-    UsersModule,
-    StationsModule,
-    SessionsModule,
-    PaymentsModule,
-    NotificationsModule,
-    HealthModule,
+    // UsersModule,
+    // StationsModule,
+    // SessionsModule,
+    // PaymentsModule,
+    // NotificationsModule,
+    // HealthModule,
   ],
 })
 export class AppModule { }
