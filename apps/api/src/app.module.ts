@@ -15,9 +15,9 @@ import { BookingsModule } from './bookings/bookings.module'
 import { UsersModule } from './users/users.module'
 import { PaymentsModule } from './payments/payments.module'
 import { NotificationsModule } from './notifications/notifications.module'
+import { HealthModule } from './health/health.module'
 // import { StationsModule } from './modules/stations/stations.module'
 // import { SessionsModule } from './modules/sessions/sessions.module'
-// import { HealthModule } from './modules/health/health.module'
 
 @Module({
   imports: [
@@ -40,9 +40,9 @@ import { NotificationsModule } from './notifications/notifications.module'
     UsersModule,
     PaymentsModule,
     NotificationsModule,
+    HealthModule,
     // StationsModule,
     // SessionsModule,
-    // HealthModule,
   ],
 })
 export class AppModule { }

@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString, IsPhoneNumber, IsBoolean } from 'class-validator'
+import { IsEmail, IsEnum, IsOptional, IsString, IsPhoneNumber, IsBoolean, IsObject } from 'class-validator'
 import { UserRole } from '@prisma/client'
 
 export class CreateUserDto {
@@ -50,4 +50,12 @@ export class UpdateUserDto {
     @IsString()
     @IsOptional()
     fcmToken?: string // For push notifications
+
+    @IsObject()
+    @IsOptional()
+    preferences?: any
+
+    @IsString()
+    @IsOptional()
+    licenseNumber?: string
 }

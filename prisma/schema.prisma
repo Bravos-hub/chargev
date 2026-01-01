@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================================
@@ -250,6 +249,11 @@ model User {
   verified         Boolean  @default(false)
   twoFactorEnabled Boolean  @default(false)
 
+  // Frontend Integration
+  preferences   Json?    @default("{}") // { language, units, notifications }
+  licenseNumber String?
+  avatarUrl     String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -321,6 +325,11 @@ model Vehicle {
   userId  String? // Individual ownership
   orgId   String? // Org ownership
   fleetId String? // Fleet vehicles
+  
+  // Frontend Integration
+  plate    String?
+  color    String?
+  odometer Float? @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -431,6 +440,8 @@ model Station {
   address String
   lat     Float?
   lng     Float?
+  images  String[] // URLs to images
+  amenities String[] // ["wifi", "cafe", "restroom"]
 
   orgId  String
   type   StationType
@@ -533,6 +544,11 @@ model Booking {
 
   paymentStatus String  @default("pending") // 'pending' | 'paid' | 'refunded'
   amount        Decimal @db.Decimal(10, 2)
+  
+  // Frontend Integration
+  mode         String  @default("fixed") // 'fixed' | 'mobile'
+  energyTarget Float?
+  location     Json?   // Snapshot of location { lat, lng, address }  
 
   checkedInAt DateTime?
   cancelledAt DateTime?

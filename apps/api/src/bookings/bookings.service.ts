@@ -42,6 +42,9 @@ export class BookingsService {
                 endTime: end,
                 status: 'CONFIRMED', // Auto-confirm for now
                 amount: 0, // Calculate price later based on rates
+                mode: dto.mode,
+                energyTarget: dto.energyTarget,
+                location: dto.location,
             }
         })
     }

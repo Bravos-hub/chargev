@@ -23,6 +23,18 @@ export class CreateVehicleDto {
 
     @IsString()
     @IsOptional()
+    plate?: string
+
+    @IsString()
+    @IsOptional()
+    color?: string
+
+    @IsNumber()
+    @IsOptional()
+    odometer?: number
+
+    @IsString()
+    @IsOptional()
     userId?: string
 
     @IsString()

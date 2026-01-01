@@ -10,7 +10,9 @@ export class VehiclesService {
 
     async create(createVehicleDto: CreateVehicleDto) {
         return this.prisma.vehicle.create({
-            data: createVehicleDto,
+            data: {
+                ...createVehicleDto,
+            },
         })
     }
 

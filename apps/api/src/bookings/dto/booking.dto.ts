@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsNumber, IsObject } from 'class-validator'
 import { BookingStatus } from '@prisma/client'
 
 export class CreateBookingDto {
@@ -15,6 +15,18 @@ export class CreateBookingDto {
 
     @IsDateString()
     endTime: string
+
+    @IsString()
+    @IsOptional()
+    mode?: string = 'fixed'
+
+    @IsNumber()
+    @IsOptional()
+    energyTarget?: number
+
+    @IsObject()
+    @IsOptional()
+    location?: any
 }
 
 export class UpdateBookingStatusDto {
