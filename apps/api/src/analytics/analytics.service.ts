@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { PrismaClient } from '.prisma/client'
+import { PrismaService } from '../common/prisma/prisma.service'
 import { CacheService } from '../integrations/redis/cache.service'
 import { SessionManagerService } from '../sessions/session-manager.service'
 
@@ -8,7 +8,7 @@ export class AnalyticsService {
     private readonly logger = new Logger(AnalyticsService.name)
 
     constructor(
-        private prisma: PrismaClient,
+        private prisma: PrismaService,
         private cache: CacheService,
         private sessionManager: SessionManagerService
     ) { }

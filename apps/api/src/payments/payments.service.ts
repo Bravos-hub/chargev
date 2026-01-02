@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common'
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common'
 import { PrismaService } from '../common/prisma/prisma.service'
 import { WalletService } from '../wallet/wallet.service'
 import { CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/payment.dto'
@@ -8,7 +8,8 @@ import axios from 'axios'
 
 @Injectable()
 export class PaymentsService {
-    private stripe: Stripe
+    private readonly logger = new Logger(PaymentsService.name)
+    private stripe: Stripe | null = null
 
     constructor(
         private prisma: PrismaService,
@@ -16,14 +17,25 @@ export class PaymentsService {
         private configService: ConfigService
     ) {
         const stripeSecret = this.configService.get<string>('STRIPE_SECRET_KEY')
-        if (!stripeSecret) throw new Error('STRIPE_SECRET_KEY not configured')
-        this.stripe = new Stripe(stripeSecret, {
-            apiVersion: '2024-06-20' as any,
-        })
+        if (!stripeSecret) {
+            this.logger.warn('STRIPE_SECRET_KEY not configured - Stripe payments disabled')
+        } else {
+            this.stripe = new Stripe(stripeSecret, {
+                apiVersion: '2024-06-20' as any,
+            })
+        }
+    }
+
+    private ensureStripe(): Stripe {
+        if (!this.stripe) {
+            throw new BadRequestException('Stripe payments are not configured')
+        }
+        return this.stripe
     }
 
     async createIntent(userId: string, dto: CreatePaymentIntentDto) {
-        const intent = await this.stripe.paymentIntents.create({
+        const stripe = this.ensureStripe()
+        const intent = await stripe.paymentIntents.create({
             amount: Math.round(dto.amount * 100), // cents
             currency: dto.currency || 'usd',
             metadata: { userId, bookingId: dto.bookingId || '', sessionId: dto.sessionId || '' }
@@ -62,7 +74,8 @@ export class PaymentsService {
         if (!payment.providerTxId) {
             throw new BadRequestException('Payment provider transaction ID missing')
         }
-        const intent = await this.stripe.paymentIntents.retrieve(payment.providerTxId)
+        const stripe = this.ensureStripe()
+        const intent = await stripe.paymentIntents.retrieve(payment.providerTxId)
         if (intent.status !== 'succeeded') {
             throw new BadRequestException('Payment not yet succeeded on provider')
         }
@@ -90,7 +103,8 @@ export class PaymentsService {
             if (!payment.providerTxId) {
                 throw new BadRequestException('Payment provider transaction ID missing for refund')
             }
-            await this.stripe.refunds.create({ payment_intent: payment.providerTxId })
+            const stripe = this.ensureStripe()
+            await stripe.refunds.create({ payment_intent: payment.providerTxId })
         }
 
         return this.prisma.payment.update({

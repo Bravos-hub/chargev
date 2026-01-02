@@ -23,8 +23,22 @@ import { RoutePlanningModule } from './route-planning/route-planning.module'
 import { PaymentsModule } from './payments/payments.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { HealthModule } from './health/health.module'
-// import { StationsModule } from './modules/stations/stations.module'
-// import { SessionsModule } from './modules/sessions/sessions.module'
+
+// New Enhanced Architecture Modules
+import { AuditModule } from './audit/audit.module'
+import { ApiManagementModule } from './api-management/api-management.module'
+import { RatingsModule } from './ratings/ratings.module'
+import { DriversModule } from './drivers/drivers.module'
+import { ShuttleModule } from './shuttle/shuttle.module'
+import { ToursModule } from './tours/tours.module'
+import { RentalsModule } from './rentals/rentals.module'
+import { OperationsModule } from './operations/operations.module'
+import { OCPIModule } from './ocpi/ocpi.module'
+import { ConnectorsModule } from './connectors/connectors.module'
+import { StationsModule } from './stations/stations.module'
+import { PricingModule } from './pricing/pricing.module'
+import { InvoicesModule } from './invoices/invoices.module'
+import { SettlementsModule } from './settlements/settlements.module'
 
 @Module({
   imports: [
@@ -36,27 +50,55 @@ import { HealthModule } from './health/health.module'
     KafkaModule,
     RedisModule, // Global Redis module
     SecurityModule, // Must be before feature modules for global guards
+    
+    // Core Infrastructure
     RealtimeModule,
     SessionsManagerModule,
     AnalyticsModule,
     ApiModule,
     SmartChargingModule,
+    
+    // Authentication & Users
     AuthModule,
-    VehiclesModule,
-    BookingsModule,
     UsersModule,
-    WalletModule,
-    SwapModule,
+    
+    // Charging Infrastructure
+    StationsModule,
+    BookingsModule,
+    ConnectorsModule,
     PrivateChargersModule,
-    SupportModule,
+    SwapModule,
+    
+    // Fleet Partner Features
     FleetsModule,
+    VehiclesModule,
+    DriversModule,
+    ShuttleModule,
+    ToursModule,
+    RentalsModule,
+    
+    // Business Operations
     OrganizationsModule,
-    RoutePlanningModule,
+    WalletModule,
     PaymentsModule,
+    PricingModule,
+    InvoicesModule,
+    SettlementsModule,
+    RoutePlanningModule,
+    
+    // Platform Features
+    RatingsModule,
     NotificationsModule,
+    SupportModule,
+    OperationsModule,
+    
+    // Integrations & Management
+    ApiManagementModule,
+    OCPIModule,
+    AuditModule, // Global - provides AuditService everywhere
+    
+    // System
     HealthModule,
-    // StationsModule,
-    // SessionsModule,
   ],
 })
 export class AppModule { }

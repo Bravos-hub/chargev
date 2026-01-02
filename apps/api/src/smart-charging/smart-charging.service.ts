@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { PrismaClient } from '.prisma/client'
+import { PrismaService } from '../common/prisma/prisma.service'
 import { CacheService } from '../integrations/redis/cache.service'
 import { SessionManagerService } from '../sessions/session-manager.service'
 import { KafkaService } from '../integrations/kafka/kafka.service'
@@ -13,7 +13,7 @@ export class SmartChargingService {
     private readonly DEFAULT_MAX_POWER = 22 // kW (Type 2 AC charger)
 
     constructor(
-        private prisma: PrismaClient,
+        private prisma: PrismaService,
         private cache: CacheService,
         private sessionManager: SessionManagerService,
         private kafka: KafkaService

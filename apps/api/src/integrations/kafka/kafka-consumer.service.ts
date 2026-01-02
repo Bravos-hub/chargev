@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs'
 import { PrismaService } from '../../common/prisma/prisma.service'
@@ -17,6 +17,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
         private prisma: PrismaService,
         private cache: CacheService,
         private pubsub: PubSubService,
+        @Inject(forwardRef(() => SessionManagerService))
         private sessionManager: SessionManagerService
     ) { }
 

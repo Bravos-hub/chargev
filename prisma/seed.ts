@@ -375,7 +375,7 @@ async function main() {
       model: 'Terra 184',
       status: 'ONLINE',
       maxKw: 150,
-      connectors: 2,
+      connectorCount: 2,
     },
   })
 
@@ -386,7 +386,7 @@ async function main() {
       model: 'Express 250',
       status: 'ONLINE',
       maxKw: 62,
-      connectors: 2,
+      connectorCount: 2,
     },
   })
 
@@ -577,12 +577,63 @@ async function main() {
 
   console.log('Creating pricing and schedules...')
 
-  await prisma.pricing.create({
+  const pricing1 = await prisma.pricing.create({
     data: {
       stationId: station1.id,
       type: 'ENERGY_BASED',
       perKwh: 0.30,
       currency: 'USD',
+    },
+  })
+
+  // ============================================================================
+  // PRICING RULES
+  // ============================================================================
+
+  console.log('Creating pricing rules...')
+
+  await prisma.pricingRule.createMany({
+    data: [
+      {
+        pricingId: pricing1.id,
+        name: 'Peak Hours (5PM-9PM)',
+        type: 'TIME_OF_USE',
+        priority: 10,
+        conditions: { startHour: 17, endHour: 21, daysOfWeek: [1, 2, 3, 4, 5] },
+        adjustment: { type: 'multiplier', value: 1.5, applyTo: 'total' },
+        active: true,
+      },
+      {
+        pricingId: pricing1.id,
+        name: 'Night Discount (11PM-6AM)',
+        type: 'TIME_OF_USE',
+        priority: 5,
+        conditions: { startHour: 23, endHour: 6 },
+        adjustment: { type: 'discount', value: 0.2, applyTo: 'total' },
+        active: true,
+      },
+      {
+        pricingId: pricing1.id,
+        name: 'Weekend Special',
+        type: 'TIME_OF_USE',
+        priority: 3,
+        conditions: { daysOfWeek: [0, 6] },
+        adjustment: { type: 'discount', value: 0.1, applyTo: 'energy' },
+        active: true,
+      },
+    ],
+  })
+
+  // Fleet discount rule
+  await prisma.pricingRule.create({
+    data: {
+      pricingId: pricing1.id,
+      name: 'Green Fleet Discount',
+      type: 'FLEET_DISCOUNT',
+      priority: 20,
+      conditions: { fleetId: fleet1.id },
+      adjustment: { type: 'discount', value: 0.15, applyTo: 'total', maxDiscount: 10 },
+      active: true,
     },
   })
 
@@ -664,6 +715,152 @@ async function main() {
   })
 
   // ============================================================================
+  // SUBSCRIPTION PLANS & SUBSCRIPTIONS
+  // ============================================================================
+
+  console.log('Creating subscription plans...')
+
+  const premiumPlan = await prisma.subscriptionPlan.create({
+    data: {
+      orgId: chargingOrg.id,
+      name: 'EVzone Premium',
+      description: 'Unlimited charging with 15% discount and priority booking',
+      price: 29.99,
+      currency: 'USD',
+      interval: 'monthly',
+      features: {
+        discountPercent: 15,
+        priorityBooking: true,
+        freeKwh: 50,
+        noIdleFees: true,
+        dedicatedSupport: true,
+      },
+      active: true,
+    },
+  })
+
+  const basicPlan = await prisma.subscriptionPlan.create({
+    data: {
+      orgId: chargingOrg.id,
+      name: 'EVzone Basic',
+      description: '10% discount on all charging',
+      price: 9.99,
+      currency: 'USD',
+      interval: 'monthly',
+      features: {
+        discountPercent: 10,
+        priorityBooking: false,
+        freeKwh: 0,
+      },
+      active: true,
+    },
+  })
+
+  const yearlyPlan = await prisma.subscriptionPlan.create({
+    data: {
+      orgId: chargingOrg.id,
+      name: 'EVzone Pro Annual',
+      description: 'Best value - 20% discount, 100 free kWh/month',
+      price: 249.99,
+      currency: 'USD',
+      interval: 'yearly',
+      features: {
+        discountPercent: 20,
+        priorityBooking: true,
+        freeKwh: 100,
+        noIdleFees: true,
+        dedicatedSupport: true,
+        customRate: 0.25,
+      },
+      active: true,
+    },
+  })
+
+  console.log('Creating subscriptions...')
+
+  await prisma.subscription.create({
+    data: {
+      userId: rider2.id,
+      planId: premiumPlan.id,
+      status: 'ACTIVE',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    },
+  })
+
+  await prisma.subscription.create({
+    data: {
+      userId: rider1.id,
+      planId: basicPlan.id,
+      status: 'ACTIVE',
+      currentPeriodStart: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+    },
+  })
+
+  // ============================================================================
+  // SETTLEMENTS
+  // ============================================================================
+
+  console.log('Creating settlements...')
+
+  await prisma.settlement.create({
+    data: {
+      orgId: chargingOrg.id,
+      type: 'CPO_PAYOUT',
+      periodStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      periodEnd: new Date(),
+      grossAmount: 2500.00,
+      fees: 75.00,
+      netAmount: 2425.00,
+      currency: 'USD',
+      status: 'COMPLETED',
+      lineItems: [
+        { type: 'session', description: 'Charging Sessions (150 sessions)', quantity: 150, unitAmount: 15, totalAmount: 2250.00 },
+        { type: 'subscription', description: 'Subscription Revenue', quantity: 10, unitAmount: 25, totalAmount: 250.00 },
+      ],
+      paidAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      reference: 'PAY-CPO-001',
+    },
+  })
+
+  await prisma.settlement.create({
+    data: {
+      orgId: chargingOrg.id,
+      type: 'CPO_PAYOUT',
+      periodStart: new Date(),
+      periodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      grossAmount: 1200.00,
+      fees: 36.00,
+      netAmount: 1164.00,
+      currency: 'USD',
+      status: 'PENDING',
+      lineItems: [
+        { type: 'session', description: 'Charging Sessions (Current Period)', quantity: 75, unitAmount: 16, totalAmount: 1200.00 },
+      ],
+    },
+  })
+
+  await prisma.settlement.create({
+    data: {
+      orgId: fleetOrg.id,
+      type: 'FLEET_BILLING',
+      periodStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      periodEnd: new Date(),
+      grossAmount: 850.00,
+      fees: 0,
+      netAmount: 850.00,
+      currency: 'USD',
+      status: 'COMPLETED',
+      lineItems: [
+        { type: 'session', description: 'Fleet Vehicle Charging', quantity: 45, unitAmount: 18.89, totalAmount: 850.00, metadata: { vehicleCount: 3 } },
+      ],
+      paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      reference: 'INV-FLEET-001',
+    },
+  })
+
+  // ============================================================================
   // TRIPS & DIAGNOSTICS
   // ============================================================================
 
@@ -729,12 +926,16 @@ async function main() {
   console.log('- 2 Charging Sessions')
   console.log('- 2 Meter Values')
   console.log('- 1 Pricing Config')
+  console.log('- 4 Pricing Rules (TOU, Fleet Discount)')
   console.log('- 1 Schedule')
   console.log('- 2 Access Controls')
   console.log('- 3 Notifications')
   console.log('- 1 Trip')
   console.log('- 1 Vehicle Diagnostic')
   console.log('- 1 Maintenance Record')
+  console.log('- 3 Subscription Plans')
+  console.log('- 2 Subscriptions')
+  console.log('- 3 Settlements')
   console.log('\n🔑 Test Credentials:')
   console.log('Email: admin@evzone.com | Password: password123 (Super Admin)')
   console.log('Email: owner@example.com | Password: password123 (Station Owner)')

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { CacheService } from '../integrations/redis/cache.service'
 import { PubSubService } from '../integrations/redis/pubsub.service'
 import { PrismaService } from '../common/prisma/prisma.service'
@@ -27,6 +27,7 @@ export class SessionManagerService {
         private cache: CacheService,
         private pubsub: PubSubService,
         private prisma: PrismaService,
+        @Inject(forwardRef(() => KafkaService))
         private kafka: KafkaService,
     ) { }
 

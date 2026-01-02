@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Request, UseGuards, Param } from '@nestjs/common'
 import { PaymentsService } from './payments.service'
-import { WalletService } from './wallet.service'
+import { WalletService } from '../wallet/wallet.service'
 import { CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/payment.dto'
 import { TopUpWalletDto } from './dto/wallet.dto'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'

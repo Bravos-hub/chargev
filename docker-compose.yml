@@ -1,16 +1,49 @@
-version: '3.8'
-
 services:
+  # PostgreSQL Database for local development
+  postgres:
+    image: postgres:15-alpine
+    container_name: evzone-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: evzone_db
+      # Trust all connections for local development
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d evzone_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    command: ["postgres", "-c", "listen_addresses=*"]
+
+  # Redis for caching and pub/sub
+  redis:
+    image: redis:7-alpine
+    container_name: evzone-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # Zookeeper for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
+    container_name: evzone-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
 
+  # Kafka for event streaming
   kafka:
     image: confluentinc/cp-kafka:7.3.0
+    container_name: evzone-kafka
     depends_on:
       - zookeeper
     ports:
@@ -23,17 +56,6 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
-
-  # Optional: Local Postgres if needed
-  # postgres:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_USER: user
-  #     POSTGRES_PASSWORD: password
-  #     POSTGRES_DB: cpms
-  #   ports:
-  #     - "5432:5432"
+volumes:
+  postgres_data:
+  redis_data:
