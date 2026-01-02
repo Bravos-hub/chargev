@@ -8,11 +8,9 @@ export class SwapService {
     async getStations() {
         return this.prisma.swapStation.findMany({
             include: {
-                cabinets: {
+                shelves: {
                     include: {
-                        slots: {
-                            include: { battery: true }
-                        }
+                        packs: true
                     }
                 }
             }
@@ -23,11 +21,9 @@ export class SwapService {
         const station = await this.prisma.swapStation.findUnique({
             where: { id },
             include: {
-                cabinets: {
+                shelves: {
                     include: {
-                        slots: {
-                            include: { battery: true }
-                        }
+                        packs: true
                     }
                 }
             }
@@ -37,48 +33,57 @@ export class SwapService {
     }
 
     async initiateSwap(userId: string, stationId: string, vehicleId: string) {
-        // Placeholder logic for initiating a swap
-        // 1. Check if user has an active battery
-        // 2. Check if station has available charged batteries
-        // 3. Create a pending swap transaction
+        // Logic for initiating a swap
+        const availablePack = await this.prisma.batteryPack.findFirst({
+            where: { stationId, status: 'AVAILABLE', soc: { gt: 80 } }
+        })
 
-        return this.prisma.swapTransaction.create({
+        if (!availablePack) throw new BadRequestException('No charged batteries available at this station')
+
+        return this.prisma.swapSession.create({
             data: {
                 userId,
                 stationId,
                 vehicleId,
+                packInstalledId: availablePack.id,
                 status: 'INITIATED',
-                startTime: new Date()
+                startedAt: new Date()
             }
         })
     }
 
     async completeSwap(id: string) {
-        const tx = await this.prisma.swapTransaction.findUnique({ where: { id } })
-        if (!tx) throw new NotFoundException('Swap transaction not found')
+        const session = await this.prisma.swapSession.findUnique({ where: { id } })
+        if (!session) throw new NotFoundException('Swap session not found')
 
-        return this.prisma.swapTransaction.update({
+        return this.prisma.swapSession.update({
             where: { id },
             data: {
                 status: 'COMPLETED',
-                endTime: new Date()
+                completedAt: new Date()
             }
         })
     }
 
     async getUserBatteries(userId: string) {
-        return this.prisma.battery.findMany({
-            where: { userId }
+        // In the current schema, BatteryPack doesn't have a userId directly, 
+        // but SwapSession tracks which user took which battery.
+        // Assuming user "owns" the battery currently in their vehicle.
+        return this.prisma.swapSession.findMany({
+            where: { userId, status: 'COMPLETED' },
+            include: { packInstalled: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1
         })
     }
 
     async getSwapHistory(userId: string) {
-        return this.prisma.swapTransaction.findMany({
+        return this.prisma.swapSession.findMany({
             where: { userId },
             include: {
-                station: { select: { name: true, location: true } }
+                station: { select: { stationId: true } } // SwapStation uses stationId link
             },
-            orderBy: { startTime: 'desc' }
+            orderBy: { startedAt: 'desc' }
         })
     }
 }

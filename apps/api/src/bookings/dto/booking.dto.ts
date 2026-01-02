@@ -1,5 +1,14 @@
 import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsNumber, IsObject } from 'class-validator'
-import { BookingStatus } from '@prisma/client'
+
+export enum BookingStatus {
+    PENDING = 'PENDING',
+    CONFIRMED = 'CONFIRMED',
+    CHECKED_IN = 'CHECKED_IN',
+    IN_PROGRESS = 'IN_PROGRESS',
+    COMPLETED = 'COMPLETED',
+    CANCELLED = 'CANCELLED',
+    EXPIRED = 'EXPIRED'
+}
 
 export class CreateBookingDto {
     @IsString()

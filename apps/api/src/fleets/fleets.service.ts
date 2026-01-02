@@ -5,9 +5,9 @@ import { PrismaService } from '../common/prisma/prisma.service'
 export class FleetsService {
     constructor(private prisma: PrismaService) { }
 
-    async findAll(ownerId: string) {
+    async findAll(orgId: string) {
         return this.prisma.fleet.findMany({
-            where: { ownerId },
+            where: { orgId },
             include: { vehicles: true }
         })
     }
@@ -15,18 +15,17 @@ export class FleetsService {
     async findOne(id: string) {
         const fleet = await this.prisma.fleet.findUnique({
             where: { id },
-            include: { vehicles: true, members: true }
+            include: { vehicles: true, drivers: true }
         })
         if (!fleet) throw new NotFoundException('Fleet not found')
         return fleet
     }
 
-    async create(ownerId: string, dto: any) {
+    async create(orgId: string, dto: any) {
         return this.prisma.fleet.create({
             data: {
-                ownerId,
+                orgId,
                 name: dto.name,
-                description: dto.description
             }
         })
     }

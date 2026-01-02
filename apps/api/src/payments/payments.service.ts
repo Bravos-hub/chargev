@@ -2,16 +2,33 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../common/prisma/prisma.service'
 import { WalletService } from '../wallet/wallet.service'
 import { CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/payment.dto'
-import { PaymentMethod } from '@prisma/client'
+import { ConfigService } from '@nestjs/config'
+import Stripe from 'stripe'
+import axios from 'axios'
 
 @Injectable()
 export class PaymentsService {
+    private stripe: Stripe
+
     constructor(
         private prisma: PrismaService,
-        private walletService: WalletService
-    ) { }
+        private walletService: WalletService,
+        private configService: ConfigService
+    ) {
+        const stripeSecret = this.configService.get<string>('STRIPE_SECRET_KEY')
+        if (!stripeSecret) throw new Error('STRIPE_SECRET_KEY not configured')
+        this.stripe = new Stripe(stripeSecret, {
+            apiVersion: '2024-06-20' as any,
+        })
+    }
 
     async createIntent(userId: string, dto: CreatePaymentIntentDto) {
+        const intent = await this.stripe.paymentIntents.create({
+            amount: Math.round(dto.amount * 100), // cents
+            currency: dto.currency || 'usd',
+            metadata: { userId, bookingId: dto.bookingId || '', sessionId: dto.sessionId || '' }
+        })
+
         return this.prisma.payment.create({
             data: {
                 userId,
@@ -21,7 +38,9 @@ export class PaymentsService {
                 bookingId: dto.bookingId,
                 sessionId: dto.sessionId,
                 status: 'PENDING',
-                provider: 'stripe'
+                provider: 'stripe',
+                providerTxId: intent.id,
+                providerData: intent as any
             },
         })
     }
@@ -37,6 +56,15 @@ export class PaymentsService {
 
         if (payment.userId !== userId) {
             throw new BadRequestException('Unauthorized payment confirmation')
+        }
+
+        // Verify with Stripe
+        if (!payment.providerTxId) {
+            throw new BadRequestException('Payment provider transaction ID missing')
+        }
+        const intent = await this.stripe.paymentIntents.retrieve(payment.providerTxId)
+        if (intent.status !== 'succeeded') {
+            throw new BadRequestException('Payment not yet succeeded on provider')
         }
 
         const updatedPayment = await this.prisma.payment.update({
@@ -58,7 +86,13 @@ export class PaymentsService {
         const payment = await this.prisma.payment.findUnique({ where: { id } })
         if (!payment) throw new NotFoundException('Payment not found')
 
-        // Mock refund logic
+        if (payment.provider === 'stripe') {
+            if (!payment.providerTxId) {
+                throw new BadRequestException('Payment provider transaction ID missing for refund')
+            }
+            await this.stripe.refunds.create({ payment_intent: payment.providerTxId })
+        }
+
         return this.prisma.payment.update({
             where: { id },
             data: { status: 'REFUNDED' }
@@ -80,7 +114,10 @@ export class PaymentsService {
     }
 
     async processMobilePayment(userId: string, amount: number, phone: string) {
-        // Mock M-Pesa / Mobile Money logic
+        // structural M-Pesa STK Push logic
+        // TODO: Get access token, then call process.env.MPESA_STK_PUSH_URL
+        console.log(`[MPESA] Initiating STK Push for ${phone}, amount ${amount}`)
+
         return this.prisma.payment.create({
             data: {
                 userId,
@@ -89,7 +126,7 @@ export class PaymentsService {
                 method: 'MOBILE_MONEY',
                 status: 'PENDING',
                 provider: 'mpesa',
-                metadata: { phone }
+                providerData: { phone } as any
             }
         })
     }

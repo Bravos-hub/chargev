@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common'
 import { FleetsService } from './fleets.service'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
+import { CreateFleetDto } from './dto/fleet.dto'
 
 @Controller('fleets')
 @UseGuards(JwtAuthGuard)
@@ -18,7 +19,7 @@ export class FleetsController {
     }
 
     @Post()
-    create(@Request() req: any, @Body() dto: any) {
+    create(@Request() req: any, @Body() dto: CreateFleetDto) {
         return this.fleetsService.create(req.user.id, dto)
     }
 }

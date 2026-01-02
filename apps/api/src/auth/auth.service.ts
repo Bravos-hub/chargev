@@ -109,7 +109,7 @@ export class AuthService {
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
         // Save to DB
-        await this.prisma.otpCode.create({
+        await (this.prisma as any).otpCode.create({
             data: {
                 identifier,
                 type,
@@ -127,7 +127,7 @@ export class AuthService {
     async verifyOtp(verifyOtpDto: VerifyOtpDto) {
         const { identifier, type, code } = verifyOtpDto
 
-        const record = await this.prisma.otpCode.findFirst({
+        const record = await (this.prisma as any).otpCode.findFirst({
             where: {
                 identifier,
                 type,
@@ -170,19 +170,46 @@ export class AuthService {
     }
 
     async socialLogin(type: 'google' | 'apple', token: string) {
-        // TODO: Verify token with provider
-        console.log(`[MOCK SOCIAL] Logging in with ${type}: ${token}`)
+        let email: string
+        let name: string
 
-        // Mock user for now
-        const mockUser = {
-            id: 'social-user-1',
-            email: `social_${type}@example.com`,
-            name: `Social ${type} User`,
-            role: 'RIDER_STANDARD',
-            tenantId: 'tenant-1',
+        if (type === 'google') {
+            const { OAuth2Client } = await import('google-auth-library')
+            const client = new OAuth2Client(this.configService.get('GOOGLE_CLIENT_ID'))
+            try {
+                const ticket = await client.verifyIdToken({
+                    idToken: token,
+                    audience: this.configService.get('GOOGLE_CLIENT_ID'),
+                })
+                const payload = ticket.getPayload()
+                if (!payload || !payload.email) throw new UnauthorizedException('Invalid Google token payload')
+                email = payload.email
+                name = payload.name || 'Google User'
+            } catch (error) {
+                throw new UnauthorizedException('Google token verification failed')
+            }
+        } else {
+            // Placeholder for Apple verification (requires JWKS verification)
+            console.log(`[MOCK APPLE] Logging in with apple: ${token}`)
+            email = `apple_user_${uuidv4().substring(0, 8)}@example.com`
+            name = 'Apple User'
         }
 
-        return this.generateTokens(mockUser)
+        // Find or create user
+        let user = await this.prisma.user.findUnique({ where: { email } })
+        if (!user) {
+            user = await this.prisma.user.create({
+                data: {
+                    email,
+                    name,
+                    role: 'RIDER_STANDARD',
+                    tenantId: 'tenant-1',
+                    verified: true
+                }
+            })
+        }
+
+        return this.generateTokens(user)
     }
 
     async attendantLogin(stationCode: string, passcode: string) {

@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../common/prisma/prisma.service'
-import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto'
-import { BookingStatus } from '@prisma/client'
+import { CreateBookingDto, UpdateBookingStatusDto, BookingStatus } from './dto/booking.dto'
 
 @Injectable()
 export class BookingsService {
@@ -145,7 +144,7 @@ export class BookingsService {
     async findByStation(stationId: string) {
         return this.prisma.booking.findMany({
             where: { stationId },
-            include: { User: { select: { name: true, email: true } } },
+            include: { user: { select: { name: true, email: true } } },
             orderBy: { startTime: 'desc' }
         })
     }

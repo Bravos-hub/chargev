@@ -209,7 +209,7 @@ model Organization {
   updatedAt DateTime @updatedAt
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id])
-  users    User[]
+  users    User[]   @relation("OrgUsers")
   vehicles Vehicle[]
   stations Station[]
   fleets   Fleet[]
@@ -227,7 +227,7 @@ model Fleet {
 
   org      Organization @relation(fields: [orgId], references: [id])
   vehicles Vehicle[]
-  drivers  User[]
+  drivers  User[]   @relation("FleetDrivers")
 
   @@index([orgId])
 }
@@ -259,14 +259,14 @@ model User {
 
   // Relations
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  organization Organization? @relation(fields: [orgId], references: [id])
-  fleet        Fleet?        @relation(fields: [fleetId], references: [id])
+  organization Organization? @relation("OrgUsers", fields: [orgId], references: [id])
+  fleet        Fleet?        @relation("FleetDrivers", fields: [fleetId], references: [id])
 
   refreshTokens   RefreshToken[]
   vehicles        Vehicle[]
   sessions        ChargingSession[]
   swapSessions    SwapSession[]
-  bookings        Booking[]
+  bookings        Booking[]     @relation("UserBookings")
   payments        Payment[]
   notifications   Notification[]
   chargerAccess   ChargerAccess[]
@@ -565,7 +565,7 @@ model Booking {
   // Legacy compatibility
   startAt DateTime?
   endAt   DateTime?
-  User    User      @relation(fields: [userId], references: [id])
+  user    User      @relation("UserBookings", fields: [userId], references: [id])
 
   @@index([userId])
   @@index([stationId])

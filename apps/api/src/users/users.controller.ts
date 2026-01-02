@@ -4,7 +4,24 @@ import { CreateUserDto, UpdateUserDto } from './dto/user.dto'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../common/guards/roles.guard'
 import { Roles } from '../common/decorators/auth.decorators'
-import { UserRole } from '@prisma/client'
+
+export enum UserRole {
+    SUPER_ADMIN = 'SUPER_ADMIN',
+    PLATFORM_ADMIN = 'PLATFORM_ADMIN',
+    ORG_OWNER = 'ORG_OWNER',
+    ORG_ADMIN = 'ORG_ADMIN',
+    STATION_OWNER_INDIVIDUAL = 'STATION_OWNER_INDIVIDUAL',
+    STATION_OWNER_ORG = 'STATION_OWNER_ORG',
+    STATION_ADMIN = 'STATION_ADMIN',
+    STATION_ATTENDANT = 'STATION_ATTENDANT',
+    TECHNICIAN_PUBLIC = 'TECHNICIAN_PUBLIC',
+    TECHNICIAN_ORG = 'TECHNICIAN_ORG',
+    FLEET_MANAGER = 'FLEET_MANAGER',
+    FLEET_DRIVER = 'FLEET_DRIVER',
+    RIDER_PREMIUM = 'RIDER_PREMIUM',
+    RIDER_STANDARD = 'RIDER_STANDARD',
+    GUEST = 'GUEST'
+}
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)

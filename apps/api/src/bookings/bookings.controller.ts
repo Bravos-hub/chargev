@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common'
 import { BookingsService } from './bookings.service'
-import { CreateBookingDto, UpdateBookingDto, UpdateBookingStatusDto, ExtendBookingDto } from './dto/booking.dto'
+import { CreateBookingDto, UpdateBookingDto, UpdateBookingStatusDto, ExtendBookingDto, BookingStatus } from './dto/booking.dto'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 
 @Controller('bookings')
@@ -40,7 +40,7 @@ export class BookingsController {
 
     @Post(':id/checkin')
     checkIn(@Request() req: any, @Param('id') id: string) {
-        return this.bookingsService.updateStatus(id, 'CHECKED_IN', req.user)
+        return this.bookingsService.updateStatus(id, BookingStatus.CHECKED_IN, req.user)
     }
 
     @Patch(':id/status')
@@ -66,6 +66,6 @@ export class BookingsController {
 
     @Patch(':id/cancel')
     cancel(@Request() req: any, @Param('id') id: string) {
-        return this.bookingsService.updateStatus(id, 'CANCELLED', req.user)
+        return this.bookingsService.updateStatus(id, BookingStatus.CANCELLED, req.user)
     }
 }
