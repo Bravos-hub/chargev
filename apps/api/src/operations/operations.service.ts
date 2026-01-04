@@ -327,4 +327,136 @@ export class OperationsService {
             complianceRate: incidents.length > 0 ? (withinSLA / incidents.length) * 100 : 100,
         }
     }
+
+    // =================== RECOVERY TIME TRACKING ===================
+
+    /**
+     * Calculate and update recovery time for an incident.
+     */
+    async calculateRecoveryTime(incidentId: string) {
+        const incident = await this.prisma.incident.findUnique({
+            where: { id: incidentId },
+        })
+
+        if (!incident) {
+            throw new NotFoundException('Incident not found')
+        }
+
+        if (!incident.resolvedAt) {
+            return null // Not yet resolved
+        }
+
+        // Recovery time = time from creation to resolution
+        const recoveryTimeMs = incident.resolvedAt.getTime() - incident.createdAt.getTime()
+        const recoveryTimeHours = recoveryTimeMs / (1000 * 60 * 60)
+
+        // Update incident with recovery time
+        await this.prisma.incident.update({
+            where: { id: incidentId },
+            data: {
+                metadata: {
+                    ...((incident.metadata as any) || {}),
+                    recoveryTimeHours: Math.round(recoveryTimeHours * 100) / 100,
+                },
+            },
+        })
+
+        return {
+            incidentId,
+            recoveryTimeHours: Math.round(recoveryTimeHours * 100) / 100,
+            createdAt: incident.createdAt,
+            resolvedAt: incident.resolvedAt,
+        }
+    }
+
+    /**
+     * Get recovery time analytics.
+     */
+    async getRecoveryTimeAnalytics(tenantId: string, days = 30) {
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - days)
+
+        const incidents = await this.prisma.incident.findMany({
+            where: {
+                tenantId,
+                createdAt: { gte: startDate },
+                status: { in: ['RESOLVED', 'CLOSED'] },
+                resolvedAt: { not: null },
+            },
+        })
+
+        const recoveryTimes = incidents
+            .filter((i) => i.resolvedAt)
+            .map((i) => {
+                const recoveryTimeMs = i.resolvedAt!.getTime() - i.createdAt.getTime()
+                return recoveryTimeMs / (1000 * 60 * 60) // Convert to hours
+            })
+
+        if (recoveryTimes.length === 0) {
+            return {
+                average: 0,
+                median: 0,
+                min: 0,
+                max: 0,
+                total: 0,
+            }
+        }
+
+        recoveryTimes.sort((a, b) => a - b)
+
+        const average = recoveryTimes.reduce((sum, t) => sum + t, 0) / recoveryTimes.length
+        const median = recoveryTimes[Math.floor(recoveryTimes.length / 2)]
+        const min = recoveryTimes[0]
+        const max = recoveryTimes[recoveryTimes.length - 1]
+
+        return {
+            average: Math.round(average * 100) / 100,
+            median: Math.round(median * 100) / 100,
+            min: Math.round(min * 100) / 100,
+            max: Math.round(max * 100) / 100,
+            total: recoveryTimes.length,
+        }
+    }
+
+    /**
+     * Automatically detect recovery and update recovery time.
+     */
+    async detectRecovery(incidentId: string) {
+        const incident = await this.prisma.incident.findUnique({
+            where: { id: incidentId },
+            include: {
+                station: {
+                    select: {
+                        status: true,
+                    },
+                },
+            },
+        })
+
+        if (!incident) {
+            throw new NotFoundException('Incident not found')
+        }
+
+        // If incident is resolved but recovery time not calculated, calculate it
+        if (incident.status === 'RESOLVED' && incident.resolvedAt) {
+            return this.calculateRecoveryTime(incidentId)
+        }
+
+        // Auto-detect recovery: if station is back online and incident was about station being offline
+        if (
+            incident.station?.status === 'ONLINE' &&
+            incident.status !== 'RESOLVED' &&
+            incident.status !== 'CLOSED'
+        ) {
+            // Auto-resolve if station is back online
+            const resolved = await this.updateIncident(incidentId, {
+                status: 'RESOLVED',
+                resolution: 'Station automatically recovered - back online',
+            } as any)
+
+            return this.calculateRecoveryTime(incidentId)
+        }
+
+        return null
+    }
 }

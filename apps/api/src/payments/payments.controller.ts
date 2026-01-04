@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, Request, UseGuards, Param } from '@nestjs/common'
+import { Body, Controller, Get, Post, Request, UseGuards, Param, Query } from '@nestjs/common'
 import { PaymentsService } from './payments.service'
 import { WalletService } from '../wallet/wallet.service'
+import { CurrencyConverterService } from './currency-converter.service'
 import { CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/payment.dto'
 import { TopUpWalletDto } from './dto/wallet.dto'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
@@ -10,7 +11,8 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 export class PaymentsController {
     constructor(
         private paymentsService: PaymentsService,
-        private walletService: WalletService
+        private walletService: WalletService,
+        private currencyConverter: CurrencyConverterService,
     ) { }
 
     // =================== PAYMENT ===================
@@ -47,5 +49,41 @@ export class PaymentsController {
     @Get('session/:sessionId')
     findBySession(@Param('sessionId') sessionId: string) {
         return this.paymentsService.findBySession(sessionId)
+    }
+
+    // =================== CURRENCY CONVERSION ===================
+
+    @Get('currency/convert')
+    async convertCurrency(
+        @Query('amount') amount: string,
+        @Query('from') from: string,
+        @Query('to') to: string,
+    ) {
+        return this.currencyConverter.convert(parseFloat(amount), from, to)
+    }
+
+    @Get('currency/rate')
+    async getExchangeRate(
+        @Query('from') from: string,
+        @Query('to') to: string,
+    ) {
+        return this.currencyConverter.getExchangeRate(from, to)
+    }
+
+    @Get('currency/rates')
+    async getMultipleRates(
+        @Query('from') from: string,
+        @Query('to') to: string, // Comma-separated list
+    ) {
+        const toCurrencies = to.split(',').map((c) => c.trim())
+        return this.currencyConverter.getMultipleRates(from, toCurrencies)
+    }
+
+    // =================== ADYEN WEBHOOK ===================
+
+    @Post('adyen/webhook')
+    async handleAdyenWebhook(@Body() notification: any) {
+        // Note: In production, verify webhook signature
+        return this.paymentsService.handleAdyenWebhook(notification)
     }
 }

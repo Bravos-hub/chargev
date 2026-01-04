@@ -34,6 +34,30 @@ export class AuthService {
             if (exists) throw new ConflictException('Phone already registered')
         }
 
+        // Check if tenant exists, create if not
+        let tenant = await this.prisma.tenant.findUnique({ where: { id: 'tenant-1' } })
+        if (!tenant) {
+            tenant = await this.prisma.tenant.create({
+                data: { id: 'tenant-1', name: 'Default Tenant' }
+            })
+        }
+
+        // Validate orgId if provided
+        if (rest.orgId) {
+            const org = await this.prisma.organization.findUnique({ where: { id: rest.orgId } })
+            if (!org) {
+                throw new BadRequestException(`Organization with id ${rest.orgId} does not exist`)
+            }
+        }
+
+        // Validate fleetId if provided
+        if (rest.fleetId) {
+            const fleet = await this.prisma.fleet.findUnique({ where: { id: rest.fleetId } })
+            if (!fleet) {
+                throw new BadRequestException(`Fleet with id ${rest.fleetId} does not exist`)
+            }
+        }
+
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10)
 
@@ -45,7 +69,7 @@ export class AuthService {
                     email,
                     phone,
                     passwordHash: hashedPassword,
-                    tenantId: 'tenant-1', // Default tenant for now
+                    tenantId: 'tenant-1',
                     // If role implies wallet, create one
                     wallet: this.shouldCreateWallet(registerDto.role) ? {
                         create: { currency: 'USD' }
@@ -56,9 +80,21 @@ export class AuthService {
             // Generate tokens
             const tokens = await this.generateTokens(user)
             return tokens
-        } catch (error) {
-            console.error(error)
-            throw new BadRequestException('Registration failed')
+        } catch (error: unknown) {
+            console.error('Registration error:', error)
+            // Return more specific error messages based on Prisma error codes
+            if (error && typeof error === 'object' && 'code' in error) {
+                if (error.code === 'P2003') {
+                    throw new BadRequestException('Invalid reference: tenant, organization, or fleet does not exist')
+                }
+                if (error.code === 'P2002') {
+                    throw new ConflictException('Email or phone number already registered')
+                }
+            }
+            const errorMessage = error && typeof error === 'object' && 'message' in error 
+                ? String(error.message) 
+                : 'Unknown error'
+            throw new BadRequestException(`Registration failed: ${errorMessage}`)
         }
     }
 

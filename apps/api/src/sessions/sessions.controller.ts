@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, HttpException, HttpStatus } from '@nestjs/common'
-import { SessionManagerService } from '../../sessions/session-manager.service'
-import { PrismaService } from '../../common/prisma/prisma.service'
+import { SessionManagerService } from './session-manager.service'
+import { PrismaService } from '../common/prisma/prisma.service'
+import { ActiveOnlyQueryDto, SessionHistoryQueryDto } from './dto/session.dto'
 
 @Controller('api/sessions')
 export class SessionsController {
@@ -95,9 +96,9 @@ export class SessionsController {
     @Get('station/:stationId')
     async getStationSessions(
         @Param('stationId') stationId: string,
-        @Query('active') activeOnly?: string
+        @Query() query: ActiveOnlyQueryDto
     ) {
-        if (activeOnly === 'true') {
+        if (query.active === true) {
             return await this.sessionManager.getStationActiveSessions(stationId)
         }
 
@@ -122,9 +123,9 @@ export class SessionsController {
     @Get('user/:userId')
     async getUserSessions(
         @Param('userId') userId: string,
-        @Query('active') activeOnly?: string
+        @Query() query: ActiveOnlyQueryDto
     ) {
-        if (activeOnly === 'true') {
+        if (query.active === true) {
             return await this.sessionManager.getUserActiveSessions(userId)
         }
 
@@ -148,18 +149,14 @@ export class SessionsController {
      * GET /api/sessions/history?page=1&limit=20&status=COMPLETED
      */
     @Get('history/all')
-    async getSessionHistory(
-        @Query('page') page: string = '1',
-        @Query('limit') limit: string = '20',
-        @Query('status') status?: string
-    ) {
-        const pageNum = parseInt(page)
-        const limitNum = parseInt(limit)
+    async getSessionHistory(@Query() query: SessionHistoryQueryDto) {
+        const pageNum = query.page || 1
+        const limitNum = query.limit || 20
         const skip = (pageNum - 1) * limitNum
 
         const where: any = {}
-        if (status) {
-            where.status = status
+        if (query.status) {
+            where.status = query.status
         }
 
         const [sessions, total] = await Promise.all([
@@ -184,3 +181,4 @@ export class SessionsController {
         }
     }
 }
+

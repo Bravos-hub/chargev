@@ -367,6 +367,12 @@ model Organization {
   ocpiPartners      OCPIPartner[]
   subscriptionPlans SubscriptionPlan[]
   settlements       Settlement[]
+  esgRecords        ESGRecord[]
+  carbonCredits     CarbonCredit[]
+  groupWallets      GroupWallet[]
+  vendorConfigs     VendorConfigTemplate[]
+  chargerGroups     ChargerGroup[]
+  reimbursements    HomeChargingReimbursement[]
 
   @@index([tenantId])
 }
@@ -388,8 +394,51 @@ model Fleet {
   tours          Tour[]
   rentalVehicles RentalVehicle[]
   students       Student[]
+  reimbursements HomeChargingReimbursement[]
 
   @@index([orgId])
+}
+
+enum ReimbursementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+model HomeChargingReimbursement {
+  id               String              @id @default(cuid())
+  orgId            String
+  fleetId          String
+  driverId         String
+  periodStart      DateTime
+  periodEnd        DateTime
+  energyKwh        Float
+  ratePerKwh       Float
+  requestedAmount  Float
+  approvedAmount   Float?
+  status           ReimbursementStatus @default(PENDING)
+  description      String?
+  receipts         String[] // Receipt file URLs
+  rejectionReason  String?
+  notes            String?
+  paymentReference String?
+  approvedAt       DateTime?
+  approvedBy       String?
+  rejectedAt       DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  fleet        Fleet        @relation(fields: [fleetId], references: [id])
+  driver       User         @relation(fields: [driverId], references: [id])
+
+  @@index([orgId])
+  @@index([fleetId])
+  @@index([driverId])
+  @@index([status])
+  @@index([periodStart, periodEnd])
 }
 
 //============================================================================
@@ -438,10 +487,11 @@ model User {
   wallet   Wallet?
 
   // New relations for enhanced architecture
-  ratings       Rating[]
-  savedRoutes   SavedRoute[]
-  driverProfile Driver?
-  subscriptions Subscription[]
+  ratings        Rating[]
+  savedRoutes    SavedRoute[]
+  driverProfile  Driver?
+  subscriptions  Subscription[]
+  reimbursements HomeChargingReimbursement[]
 
   @@index([tenantId])
   @@index([orgId])
@@ -633,20 +683,22 @@ model Station {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization          @relation(fields: [orgId], references: [id])
-  chargePoints ChargePoint[]
-  swapStations SwapStation[]
-  bookings     Booking[]
-  sessions     ChargingSession[]
-  commands     CommandJob[]
-  policies     SmartChargingPolicy[]
-  access       ChargerAccess[]
-  schedules    Schedule[]
-  pricing      Pricing?
+  organization  Organization          @relation(fields: [orgId], references: [id])
+  chargerGroups ChargerGroup[]
+  chargePoints  ChargePoint[]
+  swapStations  SwapStation[]
+  bookings      Booking[]
+  sessions      ChargingSession[]
+  commands      CommandJob[]
+  policies      SmartChargingPolicy[]
+  access        ChargerAccess[]
+  schedules     Schedule[]
+  pricing       Pricing?
 
   // New relations for operations management
-  incidents Incident[]
-  jobs      Job[]
+  incidents    Incident[]
+  jobs         Job[]
+  hardwareLogs HardwareLog[]
 
   @@index([orgId])
   @@index([status])
@@ -654,24 +706,27 @@ model Station {
 }
 
 model ChargePoint {
-  id              String        @id @default(cuid())
-  stationId       String
-  vendor          String?
-  model           String?
-  serialNumber    String?
-  firmwareVersion String?
-  status          StationStatus @default(ONLINE)
-  maxKw           Int?
-  connectorCount  Int           @default(1)
-  lastHeartbeat   DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  stationId        String
+  vendor           String?
+  model            String?
+  serialNumber     String?
+  firmwareVersion  String?
+  status           StationStatus @default(ONLINE)
+  maxKw            Int?
+  connectorCount   Int           @default(1)
+  lastHeartbeat    DateTime?
+  configTemplateId String? // Applied vendor config template
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  station    Station           @relation(fields: [stationId], references: [id], onDelete: Cascade)
-  sessions   ChargingSession[]
-  connectors Connector[]
+  station        Station               @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  sessions       ChargingSession[]
+  connectors     Connector[]
+  configTemplate VendorConfigTemplate? @relation(fields: [configTemplateId], references: [id])
 
   @@index([stationId])
+  @@index([configTemplateId])
 }
 
 model SwapStation {
@@ -728,7 +783,8 @@ model Booking {
   // Frontend Integration
   mode         String @default("fixed") // 'fixed' | 'mobile'
   energyTarget Float?
-  location     Json? // Snapshot of location { lat, lng, address }  
+  location     Json? // Snapshot of location { lat, lng, address }
+  metadata     Json? // Additional metadata (fleetId, vehicleId, priority, etc.)
 
   checkedInAt DateTime?
   cancelledAt DateTime?
@@ -769,6 +825,10 @@ model ChargingSession {
   amount    Decimal?      @default(0)
   currency  String        @default("USD")
 
+  // ESG fields
+  co2Saved    Float? // kg CO2 saved (calculated)
+  esgRecordId String? // Link to ESG record if created
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -780,6 +840,7 @@ model ChargingSession {
 
   meterValues MeterValue[]
   payments    Payment[]
+  esgRecords  ESGRecord[]
 
   @@index([stationId])
   @@index([userId])
@@ -845,8 +906,82 @@ model Wallet {
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions WalletTransaction[]
+  groupWallets GroupWalletMember[]
 
   @@index([userId])
+}
+
+enum GroupWalletType {
+  FAMILY
+  FLEET
+  ORGANIZATION
+}
+
+enum GroupWalletMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model GroupWallet {
+  id             String          @id @default(cuid())
+  orgId          String?
+  name           String
+  type           GroupWalletType
+  balance        Decimal         @default(0) @db.Decimal(10, 2)
+  currency       String          @default("USD")
+  spendingLimit  Decimal?        @db.Decimal(10, 2) // Optional spending limit per period
+  spendingPeriod String? // 'DAILY' | 'WEEKLY' | 'MONTHLY'
+  locked         Boolean         @default(false)
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization?            @relation(fields: [orgId], references: [id])
+  members      GroupWalletMember[]
+  transactions GroupWalletTransaction[]
+
+  @@index([orgId])
+  @@index([type])
+}
+
+model GroupWalletMember {
+  id            String                @id @default(cuid())
+  groupWalletId String
+  userId        String
+  role          GroupWalletMemberRole @default(MEMBER)
+  spendingLimit Decimal?              @db.Decimal(10, 2) // Per-member spending limit
+  permissions   Json? // Custom permissions
+  joinedAt      DateTime              @default(now())
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  groupWallet GroupWallet @relation(fields: [groupWalletId], references: [id], onDelete: Cascade)
+  wallet      Wallet      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([groupWalletId, userId])
+  @@index([groupWalletId])
+  @@index([userId])
+}
+
+model GroupWalletTransaction {
+  id            String   @id @default(cuid())
+  groupWalletId String
+  userId        String // User who made the transaction
+  type          String // 'credit' | 'debit'
+  amount        Decimal  @db.Decimal(10, 2)
+  description   String
+  reference     String?
+  balanceBefore Decimal  @db.Decimal(10, 2)
+  balanceAfter  Decimal  @db.Decimal(10, 2)
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  groupWallet GroupWallet @relation(fields: [groupWalletId], references: [id], onDelete: Cascade)
+
+  @@index([groupWalletId])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model WalletTransaction {
@@ -1857,4 +1992,153 @@ model Settlement {
   @@index([type])
   @@index([status])
   @@index([periodStart, periodEnd])
+}
+
+// ============================================================================
+// ESG & CARBON CREDITS
+// ============================================================================
+
+enum EmissionScope {
+  SCOPE_1 // Direct emissions from owned/controlled sources
+  SCOPE_2 // Indirect emissions from purchased energy
+  SCOPE_3 // All other indirect emissions in value chain
+}
+
+enum CarbonRegistry {
+  GOLD_STANDARD
+  VCS // Verified Carbon Standard
+  CARBON_REGISTRY
+  OTHER
+}
+
+model ESGRecord {
+  id        String        @id @default(cuid())
+  orgId     String
+  sessionId String? // Link to charging session if applicable
+  energyKwh Float         @default(0)
+  co2Saved  Float         @default(0) // kg CO2
+  scope     EmissionScope
+  region    String? // ISO 3166-1 alpha-2 country code
+  metadata  Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  organization Organization?    @relation(fields: [orgId], references: [id])
+  session      ChargingSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([orgId])
+  @@index([sessionId])
+  @@index([scope])
+  @@index([createdAt])
+}
+
+model CarbonCredit {
+  id                String         @id @default(cuid())
+  orgId             String
+  co2Amount         Float // kg CO2
+  periodStart       DateTime
+  periodEnd         DateTime
+  registry          CarbonRegistry
+  certificateNumber String?
+  verificationBody  String?
+  verifiedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  organization Organization? @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@index([registry])
+  @@index([periodStart, periodEnd])
+  @@index([verifiedAt])
+}
+
+// ============================================================================
+// HARDWARE LOGGING
+// ============================================================================
+
+enum HardwareLogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+enum HardwareLogCategory {
+  BOOT
+  HEARTBEAT
+  SESSION
+  ERROR
+  COMMAND
+  CONFIGURATION
+  METER_VALUES
+  STATUS_NOTIFICATION
+  OTHER
+}
+
+model HardwareLog {
+  id        String              @id @default(cuid())
+  chargerId String
+  level     HardwareLogLevel
+  category  HardwareLogCategory
+  message   String
+  data      Json?
+  errorCode String?
+  metadata  Json?
+  createdAt DateTime            @default(now())
+
+  station Station @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+
+  @@index([chargerId])
+  @@index([level])
+  @@index([category])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// CHARGER GROUPS
+// ============================================================================
+
+model ChargerGroup {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  chargers     Station[]
+
+  @@index([orgId])
+}
+
+// ============================================================================
+// VENDOR CONFIGURATION TEMPLATES
+// ============================================================================
+
+model VendorConfigTemplate {
+  id          String   @id @default(cuid())
+  orgId       String?
+  vendor      String // e.g., 'ABB', 'Schneider', 'Tesla'
+  model       String? // Specific model variant
+  name        String
+  description String?
+  config      Json // OCPP configuration key-value pairs
+  ocppVersion String? // '1.6' | '2.0' | '2.0.1'
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organization Organization? @relation(fields: [orgId], references: [id])
+  appliedTo    ChargePoint[]
+
+  @@index([orgId])
+  @@index([vendor])
+  @@index([vendor, model])
 }

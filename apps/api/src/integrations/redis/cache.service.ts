@@ -61,6 +61,13 @@ export class CacheService {
     }
 
     /**
+     * Alias for delete (for compatibility)
+     */
+    async del(...keys: string[]): Promise<number> {
+        return this.delete(...keys)
+    }
+
+    /**
      * Check if key exists
      */
     async exists(key: string): Promise<boolean> {

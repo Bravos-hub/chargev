@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../common/prisma/prisma.service'
+import { ReimbursementService } from './reimbursement.service'
 
 @Injectable()
 export class FleetsService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private reimbursementService: ReimbursementService,
+    ) { }
 
     async findAll(orgId: string) {
         return this.prisma.fleet.findMany({
@@ -28,5 +32,12 @@ export class FleetsService {
                 name: dto.name,
             }
         })
+    }
+
+    /**
+     * Get reimbursement statistics for a fleet.
+     */
+    async getReimbursementStats(fleetId: string, startDate?: Date, endDate?: Date) {
+        return this.reimbursementService.getReimbursementStats(fleetId, startDate, endDate)
     }
 }

@@ -11,6 +11,7 @@ import {
     Request,
 } from '@nestjs/common'
 import { OperationsService } from './operations.service'
+import { PredictiveMaintenanceService } from './predictive-maintenance.service'
 import {
     CreateIncidentDto,
     UpdateIncidentDto,
@@ -29,7 +30,10 @@ const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles)
 @Controller('operations')
 @UseGuards(JwtAuthGuard)
 export class OperationsController {
-    constructor(private operationsService: OperationsService) {}
+    constructor(
+        private operationsService: OperationsService,
+        private predictiveMaintenance: PredictiveMaintenanceService,
+    ) {}
 
     // =================== INCIDENTS ===================
 
@@ -147,6 +151,52 @@ export class OperationsController {
     @Roles(UserRole.STATION_ADMIN, UserRole.ORG_ADMIN, UserRole.PLATFORM_ADMIN)
     getSLAMetrics(@Request() req: any, @Query('days') days?: number) {
         return this.operationsService.getSLAMetrics(req.user.tenantId, days)
+    }
+
+    // =================== RECOVERY TIME TRACKING ===================
+
+    @Get('recovery-time/analytics')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.STATION_ADMIN, UserRole.ORG_ADMIN, UserRole.PLATFORM_ADMIN)
+    getRecoveryTimeAnalytics(@Request() req: any, @Query('days') days?: number) {
+        return this.operationsService.getRecoveryTimeAnalytics(req.user.tenantId, days)
+    }
+
+    @Post('incidents/:id/calculate-recovery')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.STATION_ADMIN, UserRole.ORG_ADMIN, UserRole.PLATFORM_ADMIN)
+    calculateRecoveryTime(@Param('id') id: string) {
+        return this.operationsService.calculateRecoveryTime(id)
+    }
+
+    @Post('incidents/:id/detect-recovery')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.STATION_ADMIN, UserRole.ORG_ADMIN, UserRole.PLATFORM_ADMIN)
+    detectRecovery(@Param('id') id: string) {
+        return this.operationsService.detectRecovery(id)
+    }
+
+    // =================== PREDICTIVE MAINTENANCE ===================
+
+    @Get('predictions/:chargerId')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.STATION_ADMIN, UserRole.ORG_ADMIN, UserRole.TECHNICIAN_PUBLIC, UserRole.TECHNICIAN_ORG)
+    async getFailurePrediction(@Param('chargerId') chargerId: string) {
+        return this.predictiveMaintenance.predictFailure(chargerId)
+    }
+
+    @Get('predictions/:chargerId/maintenance')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.STATION_ADMIN, UserRole.ORG_ADMIN, UserRole.TECHNICIAN_PUBLIC, UserRole.TECHNICIAN_ORG)
+    async getMaintenanceSchedule(@Param('chargerId') chargerId: string) {
+        return this.predictiveMaintenance.getMaintenanceSchedule(chargerId)
+    }
+
+    @Post('predictions/batch')
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.STATION_ADMIN, UserRole.ORG_ADMIN, UserRole.PLATFORM_ADMIN)
+    async batchPredictions(@Body() body: { chargerIds: string[] }) {
+        return this.predictiveMaintenance.batchPredictions(body.chargerIds)
     }
 }
 

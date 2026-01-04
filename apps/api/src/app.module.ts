@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { ScheduleModule } from '@nestjs/schedule'
 import { PrismaModule } from './common/prisma/prisma.module'
 import { KafkaModule } from './integrations/kafka/kafka.module'
 import { RedisModule } from './integrations/redis/redis.module'
 import { RealtimeModule } from './realtime/realtime.module'
 import { SessionsManagerModule } from './sessions/sessions-manager.module'
 import { AnalyticsModule } from './analytics/analytics.module'
-import { ApiModule } from './api/api.module'
 import { SmartChargingModule } from './smart-charging/smart-charging.module'
 import { SecurityModule } from './common/security.module'
 import { AuthModule } from './auth/auth.module'
@@ -39,6 +39,9 @@ import { StationsModule } from './stations/stations.module'
 import { PricingModule } from './pricing/pricing.module'
 import { InvoicesModule } from './invoices/invoices.module'
 import { SettlementsModule } from './settlements/settlements.module'
+import { ESGModule } from './esg/esg.module'
+// ML Service Integration (optional - controlled by ML_SERVICE_ENABLED env var)
+// import { MLClientModule } from './integrations/ml/ml-client.module'
 
 @Module({
   imports: [
@@ -46,6 +49,7 @@ import { SettlementsModule } from './settlements/settlements.module'
       isGlobal: true,
       envFilePath: ['.env', '.env.local'],
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     KafkaModule,
     RedisModule, // Global Redis module
@@ -55,8 +59,8 @@ import { SettlementsModule } from './settlements/settlements.module'
     RealtimeModule,
     SessionsManagerModule,
     AnalyticsModule,
-    ApiModule,
     SmartChargingModule,
+    // MLClientModule, // Uncomment when ML service is ready and ML_SERVICE_ENABLED=true
     
     // Authentication & Users
     AuthModule,
@@ -96,6 +100,9 @@ import { SettlementsModule } from './settlements/settlements.module'
     ApiManagementModule,
     OCPIModule,
     AuditModule, // Global - provides AuditService everywhere
+    
+    // ESG & Reporting
+    ESGModule,
     
     // System
     HealthModule,

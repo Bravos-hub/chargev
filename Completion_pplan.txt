@@ -1,0 +1,404 @@
+EVzone Platform Completion Plan
+Overview
+This plan covers all remaining features from the Check_this.txt requirements, excluding:
+
+Module 12: Blockchain Ledger (deferred)
+Loyalty points system (deferred)
+Rewards engine (deferred)
+Current Status: ~75% Complete
+Target: 100% (excluding deferred items)
+
+---
+
+Phase 1: Critical Enterprise Features (2-3 months)
+Priority: HIGH - Essential for enterprise clients and operational efficiency
+
+1.1 Carbon Credit & ESG Reporting (Module 14) - NEW MODULE
+Status: 0% - Not implemented
+
+Tasks:
+
+Create backend/apps/api/src/esg/ module structure
+Implement CO₂ conversion service (kWh to CO₂ calculations)
+Build ESG dashboard with Scope 1, 2, 3 emissions tracking
+Create report generation service (PDF/CSV export)
+Integrate with carbon registries API (Gold Standard, VCS, etc.)
+Add ESG metrics to analytics service
+Create ESG controller and DTOs
+Add Prisma schema for ESG records and carbon credits
+Files to Create:
+
+backend/apps/api/src/esg/esg.service.ts
+backend/apps/api/src/esg/esg.controller.ts
+backend/apps/api/src/esg/esg.module.ts
+backend/apps/api/src/esg/dto/esg.dto.ts
+`backend/apps/api/sr
+backend/apps/api/src/esc/esg/carbon-calculator.service.ts
+backend/apps/api/src/esg/report-generator.service.ts
+Database Changes:
+
+Add CarbonCredit model to Prisma schema
+Add ESGRecord model to Prisma schema
+Add ESG fields to ChargingSession model
+1.2 Exportable Reports (Module 10 Enhancement)
+Status: Partial - Analytics exist, export missing
+
+Tasks:
+
+Create report export service
+Implement CSV export for analytics data
+Implement PDF export using PDFKit or similar
+Add export endpoints to analytics controller
+Support multiple report types (sessions, revenue, energy, ESG)
+Files to Create/Modify:
+
+backend/apps/api/src/analytics/report-export.service.ts
+Update backend/apps/api/src/analytics/analytics.controller.ts
+Add DTOs for report requests
+1.3 Home Charging Reimbursement (Module 4 Enhancement)
+Status: 0% - Not implementedTasks:
+
+Design reimbursement calculation logic
+Create reimbursement service
+Add reimbursement tracking to fleet module
+Build reimbursement approval workflow
+Create reimbursement reports
+Files to Create/Modify:
+
+backend/apps/api/src/fleets/reimbursement.service.ts
+Update backend/apps/api/src/fleets/fleets.service.ts
+Add reimbursement DTOs
+Update Prisma schema with HomeChargingReimbursement model
+1.4 Group Wallet Feature (Module 13 Enhancement)
+Status: 0% - Not implemented (excluding loyalty/rewards)
+
+Tasks:
+
+Design group wallet schema (families/fleets)
+Implement group wallet creation and management
+Add member management (add/remove members)
+Implement shared balance tracking
+Add spending limits and permissions
+Create group wallet controller and service
+Files to Create/Modify:
+
+backend/apps/api/src/wallet/group-wallet.service.ts
+Update backend/apps/api/src/wallet/wallet.service.ts
+Add GroupWallet model to Prisma schema
+Add GroupWalletMember model to Prisma schema
+Create group wallet DTOs
+---
+
+Phase 2: Operational Enhancements (2-3 months)
+Priority: MEDIUM - Improves operational efficiency and user experience
+
+2.1 Predictive Maintenance (Module 3 Enhancement)
+Status: 0% - Not implemented
+
+Tasks:
+
+Research and integrate ML/AI library (TensorFlow.js or external API)
+Create predictive maintenance service
+Implement failure prediction algorithms
+Build maintenance scheduling based on predictions
+Add predictive alerts to operations module
+Create maintenance prediction dashboard
+Files to Create:
+
+backend/apps/api/src/operations/predictive-maintenance.service.ts
+backend/apps/api/src/operations/maintenance-predictor.service.ts
+Update backend/apps/api/src/operations/operations.service.ts
+Add ML model storage/versioning
+2.2 Advanced Charger Grouping (Module 1 Enhancement)
+Status: Partial - Basic grouping exists
+
+Tasks:
+
+Implement location-based clustering algorithm
+Create charger group management service
+Add group-level operations (bulk commands)
+Build group health monitoring
+Create group analytics dashboard
+Files to Create/Modify:
+
+backend/apps/api/src/chargers/charger-group.service.ts
+Update backend/apps/api/src/chargers/chargers.service.ts
+Add ChargerGroup model to Prisma schema
+Create charger group DTOs
+2.3 Advanced Hardware Logging (Module 3 Enhancement)
+Status: Partial - Basic logging existsTasks:
+
+Design comprehensive hardware log schema
+Implement structured logging service
+Add log aggregation and search
+Create log retention policies
+Build log viewer/analytics
+Files to Create:
+
+backend/apps/api/src/operations/hardware-logger.service.ts
+Add HardwareLog model to Prisma schema
+Create log search and filtering DTOs
+2.4 Automated Recovery Time Tracking (Module 3 Enhancement)
+Status: Partial - Incidents tracked, recovery time missingTasks:
+
+Implement recovery time calculation
+Add automated recovery detection
+Create recovery time analytics
+Build SLA tracking based on recovery times
+Files to Modify:
+
+Update backend/apps/api/src/operations/operations.service.ts
+Add recovery time fields to Incident model
+Create recovery time analytics endpoints
+2.5 Vendor-Specific Configuration Templates (Module 1 Enhancement)
+Status: 0% - Not implemented
+
+Tasks:
+
+Create vendor configuration template system
+Build template storage and management
+Implement template application to chargers
+Add vendor-specific OCPP configuration presets
+Files to Create:
+
+backend/apps/api/src/chargers/vendor-config.service.ts
+Add VendorConfigTemplate model to Prisma schema
+Create vendor config DTOs
+2.6 Charger Health Scoring Algorithm (Module 1 Enhancement)
+Status: Partial - Basic health existsTasks:
+
+Design comprehensive health scoring algorithm
+Implement multi-factor health calculation
+Add health trend tracking
+Create health-based alerts
+Files to Modify:
+
+Update backend/apps/api/src/chargers/chargers.service.ts
+Enhance health score calculation logic
+---
+
+Phase 3: Integration & Enhancement Features (2-3 months)
+Priority: MEDIUM-LOW - Expands capabilities and integrations
+
+3.1 Adyen Payment Gateway Integration (Module 5 Enhancement)
+Status: 0% - Only Stripe implemented
+
+Tasks:
+
+Install Adyen SDK
+Create Adyen payment service
+Implement Adyen payment methods
+Add Adyen webhook handling
+Update payment service to support multiple gateways
+Add gateway selection logic
+Files to Create/Modify:
+
+backend/apps/api/src/payments/adyen.service.ts
+Update backend/apps/api/src/payments/payments.service.ts
+Add Adyen configuration to environment variables
+3.2 Enhanced Multi-Currency Support (Module 5 Enhancement)
+Status: Partial - Basic currency support existsTasks:
+
+Implement currency conversion service
+Add real-time exchange rate integration (API)
+Support currency selection per organization
+Add multi-currency pricing rules
+Create currency management endpoints
+Files to Create/Modify:
+
+backend/apps/api/src/payments/currency-converter.service.ts
+Update pricing services for multi-currency
+Add exchange rate caching
+3.3 OCPI 2.2.1 Compliance Audit (Module 8 Enhancement)
+Status: Partial - OCPI implemented, compliance needs verificationTasks:
+
+Audit current OCPI implementation against 2.2.1 spec
+Fix compliance gaps
+Add missing OCPI endpoints
+Implement automated compliance testing
+Create OCPI compliance report
+Files to Review/Modify:
+
+backend/apps/api/src/ocpi/ocpi.service.ts
+backend/apps/api/src/ocpi/ocpi.controller.ts
+Add OCPI compliance tests
+3.4 Automated Tariff Sync (Module 8 Enhancement)
+Status: 0% - Manual sync only
+
+Tasks:
+
+Create scheduled tariff sync service
+Implement tariff change detection
+Add automated sync scheduling
+Build sync status monitoring
+Files to Create:
+
+backend/apps/api/src/ocpi/tariff-sync.service.ts
+Add scheduled job for tariff sync
+3.5 Fleet-Specific Charging Scheduling (Module 4 Enhancement)
+Status: Partial - Bookings exist, fleet-specific needs enhancementTasks:
+
+Enhance booking system for fleet scheduling
+Add fleet priority scheduling
+Implement fleet charging windows
+Create fleet schedule management
+Files to Modify:
+
+Update backend/apps/api/src/bookings/bookings.service.ts
+Add fleet scheduling logic to fleets module
+3.6 Enhanced Operator/Reseller Dashboards (Module 10 Enhancement)
+Status: Partial - Basic dashboards existTasks:
+
+Design operator-specific dashboard metrics
+Create reseller performance dashboard
+Add custom dashboard configuration
+Implement dashboard widgets system
+Files to Create/Modify:
+
+backend/apps/api/src/analytics/operator-dashboard.service.ts
+backend/apps/api/src/analytics/reseller-dashboard.service.ts
+3.7 RFID Integration Verification (Module 7 Enhancement)
+Status: Unknown - Needs verification
+
+Tasks:
+
+Audit current RFID implementation
+Verify RFID reader integration
+Test RFID card authentication flow
+Document RFID setup process
+Add RFID management endpoints if missing
+Files to Review:
+
+Search for RFID-related code
+Verify authentication flow supports RFID
+3.8 Enhanced QR Code Flow (Module 7 Enhancement)
+Status: Partial - QR exists, flow needs enhancement
+
+Tasks:
+
+Enhance QR code generation
+Improve QR scanning flow
+Add QR code session initiation
+Create QR code analytics
+Files to Modify:
+
+Update session start flow
+Enhance QR code generation service
+---
+
+Phase 4: Strategic Features (3-6 months)
+Priority: LOW - Long-term strategic value
+
+4.1 Hardware-Agnostic Plug-and-Play Gateway (Module 11) - NEW MODULE
+Status: 0% - Not implemented
+
+Tasks:
+
+Design edge gateway architecture
+Create gateway management service
+Implement protocol adapter framework
+Build protocol converters (proprietary to OCPP)
+Create gateway onboarding workflow
+Add gateway device management
+Implement secure communication (socket/SIM)
+Build gateway dashboard
+Files to Create:
+
+backend/apps/api/src/gateway/ module structure
+backend/apps/api/src/gateway/gateway.service.ts
+backend/apps/api/src/gateway/protocol-adapter.service.ts
+backend/apps/api/src/gateway/gateway-manager.service.ts
+Add Gateway and ProtocolAdapter models to Prisma schema
+Note: This is a complex module requiring hardware/software gateway development
+
+4.2 Custom Domain Configuration (Module 6 Enhancement)
+Status: 0% - Not implemented
+
+Tasks:
+
+Design multi-domain architecture
+Implement domain mapping service
+Add SSL certificate management
+Create domain verification system
+Build domain configuration UI
+Files to Create:
+
+backend/apps/api/src/organizations/domain.service.ts
+Add domain configuration to Organization model
+4.3 White-Label Mobile App Customization (Module 6 Enhancement)
+Status: 0% - Not implementedTasks:
+
+Design white-label configuration system
+Create branding configuration API
+Implement app customization service
+Build configuration management
+Files to Create:
+
+backend/apps/api/src/organizations/branding.service.ts
+Add branding fields to Organization model
+4.4 Reseller Dashboard Views (Module 6 Enhancement)
+Status: Partial - Organizations exist, reseller views need enhancementTasks:
+
+Create reseller-specific dashboard
+Add reseller performance metrics
+Implement reseller commission tracking
+Build reseller management interface
+Files to Create/Modify:
+
+backend/apps/api/src/organizations/reseller-dashboard.service.ts
+Update organizations module
+---
+
+Implementation Order & Dependencies
+Phase 1 Dependencies:
+ESG Module: Independent, can start immediately
+Export Reports: Depends on Analytics (exists)
+Home Reimbursement: Depends on Fleets (exists)
+Group Wallets: Depends on Wallet (exists)
+Phase 2 Dependencies:
+Predictive Maintenance: Depends on Operations (exists)
+Charger Grouping: Depends on Chargers (exists)
+Hardware Logging: Depends on Operations (exists)
+Recovery Time: Depends on Operations (exists)
+Vendor Configs: Depends on Chargers (exists)
+Health Scoring: Depends on Chargers (exists)
+Phase 3 Dependencies:
+Adyen: Depends on Payments (exists)
+Multi-Currency: Depends on Payments (exists)
+OCPI Compliance: Depends on OCPI (exists)
+Tariff Sync: Depends on OCPI (exists)
+Fleet Scheduling: Depends on Bookings & Fleets (exist)
+Dashboards: Depends on Analytics (exists)
+RFID/QR: Depends on Auth/Sessions (exist)
+Phase 4 Dependencies:
+Gateway: Independent new module
+Custom Domains: Depends on Organizations (exists)
+White-Label Apps: Depends on Organizations (exists)
+Reseller Views: Depends on Organizations (exists)
+---
+
+Estimated Timeline
+Phase 1: 2-3 months (Critical enterprise features)
+Phase 2: 2-3 months (Operational enhancements)
+Phase 3: 2-3 months (Integration features)
+Phase 4: 3-6 months (Strategic features)
+Total: 9-15 months to 100% completion (excluding deferred items)
+
+---
+
+Success Metrics
+All Phase 1 features implemented and tested
+ESG reporting generating compliant reports
+Export functionality working for all report types
+Group wallets supporting families and fleets
+Predictive maintenance providing actionable insights
+Payment gateways (Stripe + Adyen) fully integrated
+OCPI 2.2.1 compliance verified
+Gateway system onboarding non-OCPP stations
+---
+
+Notes
+Deferred items (Blockchain, Loyalty, Rewards) can be added in future phases
+Some features may require frontend work (not covered in this backend plan)
+Gateway module may require separate hardware/edge device development
+ESG module requires integration with external carbon registries

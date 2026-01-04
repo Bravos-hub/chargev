@@ -20,6 +20,10 @@ export class CreatePaymentIntentDto {
     @IsString()
     @IsOptional()
     sessionId?: string
+
+    @IsString()
+    @IsOptional()
+    gateway?: 'stripe' | 'adyen' | 'auto' // Payment gateway preference
 }
 
 export class ConfirmPaymentDto {
