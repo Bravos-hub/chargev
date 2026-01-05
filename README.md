@@ -500,10 +500,26 @@ APPLE_CLIENT_ID="your-apple-client-id"
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 
-# SMS/Email (optional)
-TWILIO_ACCOUNT_SID="..."
-TWILIO_AUTH_TOKEN="..."
-SENDGRID_API_KEY="..."
+# SMS/Email - OTP Delivery (optional)
+# Mailgun for Email
+MAILGUN_API_KEY="your-mailgun-api-key"
+MAILGUN_DOMAIN="your-mailgun-domain.com"
+MAILGUN_FROM_EMAIL="noreply@your-domain.com"
+
+# Twilio for SMS (International)
+TWILIO_ACCOUNT_SID="your-twilio-account-sid"
+TWILIO_AUTH_TOKEN="your-twilio-auth-token"
+TWILIO_PHONE_NUMBER="+1234567890"
+
+# AfricasTalking for SMS (Africa-focused)
+AFRICASTALKING_API_KEY="your-africastalking-api-key"
+AFRICASTALKING_USERNAME="your-africastalking-username"
+AFRICASTALKING_SENDER_ID="your-sender-id"
+
+# OTP Provider Preferences (optional)
+# Set to 'true' to prefer a specific provider, otherwise auto-selects based on phone number region
+OTP_PREFER_AFRICASTALKING="false"
+OTP_PREFER_TWILIO="false"
 ```
 
 ### Frontend (.env.local)

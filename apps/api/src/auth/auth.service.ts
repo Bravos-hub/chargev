@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto'
 import { SendOtpDto, VerifyOtpDto, OtpType } from './dto/otp.dto'
 import { TokenPayload } from '../common/auth/types'
 import { v4 as uuidv4 } from 'uuid'
+import { OtpService } from '../communications/otp.service'
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
         private prisma: PrismaService,
         private jwtService: JwtService,
         private configService: ConfigService,
+        private otpService: OtpService,
     ) { }
 
     // ===========================================
@@ -154,8 +156,13 @@ export class AuthService {
             },
         })
 
-        // TODO: Integrate with SMS/Email provider (Twilio, Africa's Talking, SendGrid)
-        console.log(`[MOCK OTP] Sending ${code} to ${identifier}`)
+        // Send OTP via appropriate provider (Mailgun, Twilio, or AfricasTalking)
+        const sent = await this.otpService.sendOtp(identifier, code, type)
+
+        if (!sent) {
+            // Log warning but don't fail the request - OTP is saved in DB
+            console.warn(`Failed to send OTP to ${identifier} via ${type}, but OTP is saved in database`)
+        }
 
         return { success: true, message: 'OTP sent' }
     }

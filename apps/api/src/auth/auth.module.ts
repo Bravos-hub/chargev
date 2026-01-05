@@ -7,6 +7,7 @@ import { JwtStrategy } from './strategies/jwt.strategy'
 import { LocalStrategy } from './strategies/local.strategy'
 import { PrismaModule } from '../common/prisma/prisma.module'
 import { RedisModule } from '../integrations/redis/redis.module'
+import { CommunicationsModule } from '../communications/communications.module'
 
 @Module({
     imports: [
@@ -19,6 +20,7 @@ import { RedisModule } from '../integrations/redis/redis.module'
         }),
         PrismaModule,
         RedisModule,
+        CommunicationsModule,
     ],
     controllers: [AuthController],
     providers: [AuthService, JwtStrategy, LocalStrategy],
